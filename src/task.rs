@@ -1,53 +1,95 @@
-use crate::employee::EmployeeType;
+use crate::employee::{Employee, EmployeeCharacteristics, EmployeeResources, EmployeeType};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum TaskId {
     CreatePR,
-    CoffeeBreak,
-    PlanWeekTasks,
 }
 
 impl TaskId {
     pub fn to_task(&self) -> Task {
         match *self {
             TaskId::CreatePR => Task {
-                employee_type: EmployeeType::Developer,
                 total_energy_required: 10.0,
                 energy_taken_per_tick: 0.1,
-                ..Task::default()
-            },
-            TaskId::CoffeeBreak => Task {
-                employee_type: EmployeeType::Developer,
-                total_energy_required: 1.0,
-                energy_taken_per_tick: 0.01,
-                ..Task::default()
-            },
-            TaskId::PlanWeekTasks => Task {
-                employee_type: EmployeeType::Manager,
-                total_energy_required: 3.0,
-                energy_taken_per_tick: 0.1,
+                energy_multipliers: TaskEnergyMultipliers {
+                    company_experience: 2.0,
+                    rigor: 2.0,
+                    programming_skills: 2.0,
+                    fitness: 1.0,
+                    energy: 1.2,
+                    focus: 1.5,
+                    stress: 0.5,
+                },
                 ..Task::default()
             },
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
+pub struct TaskEnergyMultipliers {
+    // Characteristics
+    pub company_experience: f32,
+    pub rigor: f32,
+    pub programming_skills: f32,
+    pub fitness: f32,
+    // Resources
+    pub energy: f32,
+    pub focus: f32,
+    pub stress: f32,
+}
+
+impl TaskEnergyMultipliers {
+    fn get_energy_cost(
+        &self,
+        _chars: &EmployeeCharacteristics,
+        _resources: &EmployeeResources,
+    ) -> f32 {
+        1.0
+    }
+}
+
+impl Default for TaskEnergyMultipliers {
+    fn default() -> Self {
+        TaskEnergyMultipliers {
+            company_experience: 1.0,
+            rigor: 1.0,
+            programming_skills: 1.0,
+            fitness: 1.0,
+            energy: 1.0,
+            focus: 1.0,
+            stress: 1.0,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
 pub struct Task {
     pub id: TaskId,
-    pub employee_type: EmployeeType,
     /// How much energy is needed in total
     pub total_energy_required: f32,
     /// How much have been given already
     pub energy_taken: f32,
     /// How much energy will be given by actor at each tick
     pub energy_taken_per_tick: f32,
-    pub consequences: Vec<TaskId>,
+    pub energy_multipliers: TaskEnergyMultipliers,
 }
 
 impl Task {
-    fn done(&self) -> bool {
+    pub fn is_done(&self) -> bool {
         self.total_energy_required <= self.energy_taken
+    }
+
+    pub fn process_tick(&mut self, employee: &mut Employee) {
+        let multiplier = self
+            .energy_multipliers
+            .get_energy_cost(&employee.characteristics, &employee.resources);
+        let energy_add = self.energy_taken_per_tick * multiplier;
+        self.energy_taken += energy_add;
+        println!(
+            "{:?} Energy taken {} out of {}",
+            self.id, self.energy_taken, self.total_energy_required
+        );
     }
 }
 
@@ -55,11 +97,10 @@ impl Default for Task {
     fn default() -> Self {
         Task {
             id: TaskId::CreatePR,
-            employee_type: EmployeeType::Developer,
             total_energy_required: 5.0,
             energy_taken: 0.0,
             energy_taken_per_tick: 0.1,
-            consequences: Vec::new(),
+            energy_multipliers: TaskEnergyMultipliers::default(),
         }
     }
 }

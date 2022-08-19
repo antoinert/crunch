@@ -1,5 +1,7 @@
 use rand::Rng;
 
+use crate::Task;
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EmployeeType {
     Manager,
