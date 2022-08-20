@@ -38,20 +38,26 @@ fn main() {
             kanban,
         );
 
+        // ToDo Create tasks by kanban
         employee1.addr.do_send(Work {
             task: TaskId::CreatePR,
+            uuid: 1,
         });
         employee1.addr.do_send(Work {
             task: TaskId::CreatePR,
+            uuid: 1,
         });
         employee1.addr.do_send(Work {
             task: TaskId::CreatePR,
+            uuid: 1,
         });
         employee2.addr.do_send(Work {
             task: TaskId::CreatePR,
+            uuid: 1,
         });
         employee2.addr.do_send(Work {
             task: TaskId::CreatePR,
+            uuid: 1,
         });
     });
 

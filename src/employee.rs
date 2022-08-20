@@ -7,7 +7,10 @@ use std::{
 use actix::{Actor, Addr, AsyncContext, Context, Handler, SyncArbiter, SyncContext, System};
 use rand::Rng;
 
-use crate::{task::Work, Kanban, Task, TICK_RATE};
+use crate::{
+    task::{Work, WorkCompleted},
+    Kanban, Task, TICK_RATE,
+};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EmployeeType {
@@ -105,6 +108,10 @@ impl Handler<Work> for EmployeeActor {
         let task_data = work.task.to_task();
         let multiplier = task_data.energy_multipliers.get_energy_cost(&self);
         let energy_add = task_data.energy_taken_per_tick * multiplier;
+        self.kanban_address.do_send(WorkCompleted {
+            uuid: work.uuid,
+            energy_add,
+        });
         // ToDo: Send energy add to right task in kanban
     }
 }

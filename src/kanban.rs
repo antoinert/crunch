@@ -5,7 +5,7 @@ use std::{
 
 use actix::{Actor, AsyncContext, Context, Handler};
 
-use crate::task::Task;
+use crate::task::{Task, WorkCompleted};
 
 pub fn create_task_id() -> usize {
     static COUNTER: AtomicUsize = AtomicUsize::new(1);
@@ -45,5 +45,19 @@ impl Handler<Task> for Kanban {
             "Added task {:?} to task list. Current tasks: {:?}",
             task, self.task_list
         );
+    }
+}
+
+impl Handler<WorkCompleted> for Kanban {
+    type Result = ();
+
+    fn handle(&mut self, work_completed: WorkCompleted, _ctx: &mut Context<Self>) -> Self::Result {
+        if let Some(task) = self.task_list.get_mut(&work_completed.uuid) {
+            task.energy_taken += work_completed.energy_add;
+            println!(
+                "Work performed {:?}, energy_add: {} / {}",
+                task.id, task.energy_taken, task.total_energy_required
+            );
+        }
     }
 }

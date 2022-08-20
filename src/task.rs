@@ -106,8 +106,18 @@ impl Message for Task {
 
 pub struct Work {
     pub task: TaskId,
+    pub uuid: usize,
 }
 
 impl Message for Work {
+    type Result = ();
+}
+
+pub struct WorkCompleted {
+    pub uuid: usize,
+    pub energy_add: f32,
+}
+
+impl Message for WorkCompleted {
     type Result = ();
 }
