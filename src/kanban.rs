@@ -2,8 +2,8 @@ use std::{
     collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
     fs,
     io::{stdout, Stdout, Write},
-    sync::atomic::{AtomicUsize, Ordering},
-    time::Duration,
+    sync::atomic::{AtomicUsize},
+    time::{Duration}, cmp::Ordering,
 };
 
 use actix::{Actor, Addr, AsyncContext, Context, Handler, Message, System};
@@ -17,7 +17,7 @@ use crossterm::{
     terminal::enable_raw_mode,
     ExecutableCommand,
 };
-use rand::Rng;
+use rand::{Rng, prelude::SliceRandom};
 
 use crate::{
     employee::{Buff, BuffId, EmployeeActor},
@@ -28,7 +28,7 @@ static TICK_RATE: f32 = 10.;
 
 pub fn create_task_id() -> usize {
     static COUNTER: AtomicUsize = AtomicUsize::new(1);
-    COUNTER.fetch_add(1, Ordering::Relaxed)
+    COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
 pub struct Kanban {
@@ -90,9 +90,27 @@ impl Kanban {
             .into_iter()
             .map(|(uuid, val)| (uuid, val))
             .collect::<Vec<(usize, (Task, BTreeSet<String>))>>();
-        task_list.sort_by(|a, b| b.1 .0.progress().partial_cmp(&a.1 .0.progress()).unwrap());
+        task_list.sort_by(|a, b| {
+            let task_a: Task = a.1.0;
+            let task_b: Task = b.1.0;
 
-        for (index, employee_address) in self.employee_addresses.iter().enumerate() {
+            if task_a.id == TaskId::CoffeeBreak {
+                return Ordering::Less;
+            } else if task_b.id == TaskId::CoffeeBreak {
+                return Ordering::Greater;
+            }
+
+
+            let progress_prio = b.1 .0.progress().partial_cmp(&a.1 .0.progress()).unwrap();
+
+            progress_prio
+        });
+
+        let mut shuffled_employee_addresses = self.employee_addresses.clone();
+
+        shuffled_employee_addresses.shuffle(&mut rng);
+
+        for (index, employee_address) in shuffled_employee_addresses.iter().enumerate() {
             if let Some((j, (task, _c))) = task_list.iter().nth(index) {
                 employee_address.do_send(Work {
                     task: task.id,
