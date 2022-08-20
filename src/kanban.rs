@@ -167,6 +167,12 @@ impl Kanban {
             draw_employee_card(&mut self.stdout, curr_employee, &employee_tasks);
         }
 
+        // List all employees
+        let employess = BTreeSet::from_iter(employees);
+        queue!(self.stdout, style::Print("Super Dev Organization: ".red()),).unwrap();
+        draw_contributors(&mut self.stdout, &employess);
+        queue!(self.stdout, cursor::MoveToNextLine(1),).unwrap();
+
         draw_time_bar(&mut self.stdout, self.start_time);
 
         // Title row
