@@ -19,14 +19,14 @@ fn main() {
 
         let employee1 = Employee::new(
             EmployeeType::Developer,
-            "John",
+            "Okko",
             Default::default(),
             Default::default(),
             kanban_address.clone(),
         );
         let employee2 = Employee::new(
             EmployeeType::Developer,
-            "Kelly",
+            "Anton",
             EmployeeCharacteristics::new(),
             EmployeeResources {
                 energy: 50.0,

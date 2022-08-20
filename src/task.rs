@@ -1,4 +1,4 @@
-use actix::{Message, Addr};
+use actix::{Addr, Message};
 
 use crate::employee::EmployeeActor;
 
@@ -7,7 +7,7 @@ pub enum TaskId {
     CreatePR,
     ReviewPR,
     MergePR,
-    CoffeeBreak
+    CoffeeBreak,
 }
 
 impl TaskId {

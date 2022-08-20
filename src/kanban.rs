@@ -1,7 +1,7 @@
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
+    collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
+    fs,
     io::{stdout, Stdout, Write},
-    process::exit,
     sync::atomic::{AtomicUsize, Ordering},
     time::Duration,
 };
@@ -10,8 +10,8 @@ use actix::{Actor, Addr, AsyncContext, Context, Handler, Message, System};
 use crossterm::{
     cursor, event,
     event::{poll, Event, KeyCode, KeyEvent},
-    queue, style,
-    style::{Color, Stylize},
+    execute, queue, style,
+    style::{Color, Colors, SetBackgroundColor, SetColors, Stylize},
     terminal,
     terminal::enable_raw_mode,
     ExecutableCommand,
@@ -19,7 +19,7 @@ use crossterm::{
 use rand::Rng;
 
 use crate::{
-    employee::{EmployeeActor, BuffId, Buff},
+    employee::{Buff, BuffId, EmployeeActor},
     task::{Task, TaskId, Work, WorkCompleted},
 };
 
@@ -154,7 +154,8 @@ impl Kanban {
             queue!(
                 self.stdout,
                 style::Print(&format!("{0: <20}", format!("{}: {:?}: ", *id, task.id)))
-            ).unwrap();
+            )
+            .unwrap();
 
             // Progress bar + percentage
             draw_task_progress(
@@ -228,7 +229,9 @@ impl Handler<WorkCompleted> for Kanban {
                         TaskId::CreatePR => ctx.notify(TaskId::ReviewPR.to_task()),
                         TaskId::ReviewPR => ctx.notify(TaskId::MergePR.to_task()),
                         TaskId::CoffeeBreak => {
-                            work_completed.employee_address.do_send(Buff { id: BuffId::Caffeinated });
+                            work_completed.employee_address.do_send(Buff {
+                                id: BuffId::Caffeinated,
+                            });
                         }
                         _ => {}
                     }
@@ -312,7 +315,8 @@ where
     W: Write,
 {
     let card_height = 20;
-    let card_width = 40;
+    let card_width = 90;
+
     for y in 0..card_height {
         for x in 0..card_width {
             if (y == 0 || y == card_height - 1) || (x == 0 || x == card_width - 1) {
@@ -325,11 +329,63 @@ where
             }
         }
     }
+
+    let name_file = if employee.employee_name == "Okko" {
+        "okko.txt".to_string()
+    } else {
+        "anton.txt".to_string()
+    };
+
+    queue!(w, cursor::MoveTo(1, 1),).unwrap();
+
+    draw_file_name(w, name_file);
+
+    draw_current_tasks(w, employee_tasks);
+
+    queue!(w, cursor::MoveTo(0, card_height + 1),).unwrap();
+}
+
+fn draw_current_tasks<W>(w: &mut W, employee_tasks: &Vec<Task>)
+where
+    W: Write,
+{
+    let section_start = (5, 10);
+
     queue!(
         w,
-        cursor::MoveTo(1, 1),
-        style::Print(format!("{}", employee.employee_name))
+        cursor::MoveTo(section_start.0, section_start.1),
+        style::PrintStyledContent("Ongoing tasks".underlined().red()),
     )
     .unwrap();
-    queue!(w, cursor::MoveTo(0, card_height + 1),).unwrap();
+    let capped_tasks = &employee_tasks[0..5.min(employee_tasks.len())];
+    for (i, task) in capped_tasks.iter().enumerate() {
+        queue!(
+            w,
+            cursor::MoveTo(section_start.0, section_start.1 + 2 + i as u16),
+            style::Print(&format!("{0: <20}", format!("{:?}: ", task.id)))
+        )
+        .unwrap();
+        draw_task_progress(w, Color::Green, task.progress(), 10);
+    }
+}
+
+fn draw_file_name<W>(w: &mut W, file_name: String)
+where
+    W: Write,
+{
+    let data_name = fs::read_to_string(format!("./{}", file_name)).expect("Unable to read file");
+
+    let data = data_name.split("\n");
+
+    queue!(w, cursor::MoveRight(4), cursor::MoveDown(1)).unwrap();
+
+    for d in data {
+        queue!(
+            w,
+            style::PrintStyledContent(d.to_string().red()),
+            cursor::MoveToNextLine(1),
+            cursor::MoveRight(5)
+        )
+        .unwrap();
+    }
 }
