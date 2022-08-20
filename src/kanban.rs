@@ -40,9 +40,7 @@ impl Kanban {
         }
 
         for (index, employee_address) in self.employee_addresses.iter().enumerate() {
-            let mut undone_tasks = self.task_list.iter().filter(|(_, task)| !task.is_done());
-
-            if let Some((j, task)) = undone_tasks.nth(index) {
+            if let Some((j, task)) = self.task_list.iter().nth(index) {
                 employee_address.do_send(Work {
                     task: task.id,
                     uuid: *j,
@@ -86,6 +84,10 @@ impl Handler<WorkCompleted> for Kanban {
                 task.id,
                 task.energy_taken / task.total_energy_required * 100.
             );
+
+            if task.is_done() {
+                self.task_list.remove(&work_completed.uuid);
+            }
         }
     }
 }
