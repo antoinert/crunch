@@ -98,8 +98,8 @@ impl EmployeeActor {
 
     fn spawn_tasks(&self) {
         let mut rng = rand::thread_rng();
-        println!("{}", 0.01 / self.resources.focus / 0.0001);
-        if rng.gen_bool((0.01 / self.resources.focus / 0.0001).into()) {
+
+        if rng.gen_bool((0.01 / self.resources.focus / 0.01).into()) {
             self.kanban_address.do_send(TaskId::CoffeeBreak.to_task())
         }
     }

@@ -15,6 +15,7 @@ impl TaskId {
     pub fn to_task(&self) -> Task {
         match *self {
             TaskId::CreatePR => Task {
+                id: TaskId::CreatePR,
                 total_energy_required: 10.0,
                 energy_taken_per_tick: 0.1,
                 energy_multipliers: TaskEnergyMultipliers {
@@ -29,6 +30,7 @@ impl TaskId {
                 ..Task::default()
             },
             TaskId::ReviewPR => Task {
+                id: TaskId::ReviewPR,
                 total_energy_required: 10.0,
                 energy_taken_per_tick: 0.1,
                 energy_multipliers: TaskEnergyMultipliers {
@@ -43,6 +45,7 @@ impl TaskId {
                 ..Task::default()
             },
             TaskId::MergePR => Task {
+                id: TaskId::MergePR,
                 total_energy_required: 1.0,
                 energy_taken_per_tick: 0.1,
                 energy_multipliers: TaskEnergyMultipliers {
@@ -57,6 +60,7 @@ impl TaskId {
                 ..Task::default()
             },
             TaskId::CoffeeBreak => Task {
+                id: TaskId::CoffeeBreak,
                 total_energy_required: 1.0,
                 energy_taken_per_tick: 0.1,
                 energy_multipliers: TaskEnergyMultipliers {
