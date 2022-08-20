@@ -60,6 +60,18 @@ impl Employee {
             resources: EmployeeResources::new(),
         }
     }
+
+    pub fn with_characteristics(mut self, characteristics: EmployeeCharacteristics) -> Employee {
+        self.characteristics = characteristics;
+
+        self
+    }
+
+    pub fn with_resources(mut self, resources: EmployeeResources) -> Employee {
+        self.resources = resources;
+
+        self
+    }
 }
 
 impl Actor for Employee {
@@ -69,8 +81,8 @@ impl Actor for Employee {
 impl Handler<Task> for Employee {
     type Result = ();
 
-    fn handle(&mut self, _msg: Task, _ctx: &mut SyncContext<Self>) -> Self::Result {
-        println!("Started task!");
+    fn handle(&mut self, msg: Task, _ctx: &mut SyncContext<Self>) -> Self::Result {
+        println!("Started task! {}", msg.label);
 
         let mut tasks = vec![Task::default()];
 
@@ -93,5 +105,7 @@ impl Handler<Task> for Employee {
     
             sleep(Duration::from_secs_f32(1. / TICK_RATE));
         };
+
+        println!("Finished task! {}", msg.label);
     }
 }
