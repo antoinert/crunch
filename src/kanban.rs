@@ -1,9 +1,10 @@
 use std::{
+    cmp::Ordering,
     collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
     fs,
     io::{stdout, Stdout, Write},
-    sync::atomic::{AtomicUsize},
-    time::{Duration}, cmp::Ordering,
+    sync::atomic::AtomicUsize,
+    time::Duration,
 };
 
 use actix::{Actor, Addr, AsyncContext, Context, Handler, Message, System};
@@ -17,7 +18,7 @@ use crossterm::{
     terminal::enable_raw_mode,
     ExecutableCommand,
 };
-use rand::{Rng, prelude::SliceRandom};
+use rand::{prelude::SliceRandom, Rng};
 
 use crate::{
     employee::{Buff, BuffId, EmployeeActor},
@@ -91,26 +92,17 @@ impl Kanban {
             .map(|(uuid, val)| (uuid, val))
             .collect::<Vec<(usize, (Task, BTreeSet<String>))>>();
         task_list.sort_by(|a, b| {
-            let task_a: Task = a.1.0;
-            let task_b: Task = b.1.0;
+            let task_a: Task = a.1 .0;
+            let task_b: Task = b.1 .0;
 
-            if task_a.id == TaskId::CoffeeBreak {
-                return Ordering::Less;
-            } else if task_b.id == TaskId::CoffeeBreak {
-                return Ordering::Greater;
+            if task_b.id.priority() == task_a.id.priority() {
+                b.1 .0.progress().partial_cmp(&a.1 .0.progress()).unwrap()
+            } else {
+                task_b.id.priority().cmp(&task_a.id.priority())
             }
-
-
-            let progress_prio = b.1 .0.progress().partial_cmp(&a.1 .0.progress()).unwrap();
-
-            progress_prio
         });
 
-        let mut shuffled_employee_addresses = self.employee_addresses.clone();
-
-        shuffled_employee_addresses.shuffle(&mut rng);
-
-        for (index, employee_address) in shuffled_employee_addresses.iter().enumerate() {
+        for (index, employee_address) in self.employee_addresses.iter().enumerate() {
             if let Some((j, (task, _c))) = task_list.iter().nth(index) {
                 employee_address.do_send(Work {
                     task: task.id,
@@ -295,9 +287,17 @@ impl Handler<WorkCompleted> for Kanban {
                         TaskId::CreatePR => ctx.notify(TaskId::ReviewPR.to_task()),
                         TaskId::ReviewPR => ctx.notify(TaskId::MergePR.to_task()),
                         TaskId::CoffeeBreak => {
-                            work_completed.employee_address.do_send(Buff {
-                                id: BuffId::Caffeinated,
-                            });
+                            if contributors.len() > 1 {
+                                self.employee_addresses.iter().for_each(|addr| {
+                                    addr.do_send(Buff {
+                                        id: BuffId::Caffeinated,
+                                    })
+                                })
+                            } else {
+                                work_completed.employee_address.do_send(Buff {
+                                    id: BuffId::Caffeinated,
+                                });
+                            }
                         }
                         _ => {}
                     }

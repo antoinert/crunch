@@ -11,7 +11,15 @@ pub enum TaskId {
 }
 
 impl TaskId {
-    #[allow(unused)]
+    pub fn priority(&self) -> u32 {
+        match *self {
+            TaskId::CreatePR => 0,
+            TaskId::ReviewPR => 1,
+            TaskId::MergePR => 2,
+            TaskId::CoffeeBreak => 3,
+        }
+    }
+
     pub fn to_task(&self) -> Task {
         match *self {
             TaskId::CreatePR => Task {
@@ -93,7 +101,15 @@ pub struct TaskEnergyMultipliers {
 
 impl TaskEnergyMultipliers {
     pub fn get_energy_cost(&self, employee: &EmployeeActor) -> f32 {
-        1.0 * employee.characteristics.rigor / 50.
+        (employee.characteristics.rigor
+            + employee.characteristics.fitness
+            + employee.characteristics.programming_skills
+            + employee.characteristics.company_experience
+            + employee.resources.focus * 2.0
+            + employee.resources.energy * 1.5
+            - employee.resources.stress * 3.)
+            * 1.
+            / 400.
     }
 }
 
