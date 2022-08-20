@@ -1,8 +1,8 @@
-use actix::{Actor, Addr, Handler, SyncArbiter, SyncContext};
+use actix::{Actor, Addr, Handler, SyncArbiter, SyncContext, Message};
 use rand::Rng;
 
 use crate::{
-    task::{Work, WorkCompleted},
+    task::{Work, WorkCompleted, TaskId},
     Kanban,
 };
 
@@ -62,12 +62,18 @@ impl EmployeeResources {
     }
 }
 
+#[derive(Debug, Copy, Clone, Default)]
+pub struct EmployeeBuffs {
+    bonus_characteristics: EmployeeCharacteristics
+}
+
 #[derive(Debug, Clone)]
 pub struct EmployeeActor {
     pub employee_name: &'static str,
     pub employee_type: EmployeeType,
     pub characteristics: EmployeeCharacteristics,
     pub resources: EmployeeResources,
+    pub buffs: EmployeeBuffs,
     pub kanban_address: Addr<Kanban>,
 }
 
@@ -77,6 +83,7 @@ impl EmployeeActor {
         name: &'static str,
         characteristics: EmployeeCharacteristics,
         resources: EmployeeResources,
+        buffs: EmployeeBuffs,
         kanban_address: Addr<Kanban>,
     ) -> EmployeeActor {
         EmployeeActor {
@@ -84,7 +91,16 @@ impl EmployeeActor {
             employee_type,
             characteristics,
             resources,
+            buffs,
             kanban_address,
+        }
+    }
+
+    fn spawn_tasks(&self) {
+        let mut rng = rand::thread_rng();
+        println!("{}", 0.01 / self.resources.focus / 0.0001);
+        if rng.gen_bool((0.01 / self.resources.focus / 0.0001).into()) {
+            self.kanban_address.do_send(TaskId::CoffeeBreak.to_task())
         }
     }
 }
@@ -97,6 +113,8 @@ impl Handler<Work> for EmployeeActor {
     type Result = ();
 
     fn handle(&mut self, work: Work, _ctx: &mut SyncContext<Self>) -> Self::Result {
+        self.spawn_tasks();
+
         let task_data = work.task.to_task();
         let multiplier = task_data.energy_multipliers.get_energy_cost(&self);
         let energy_add = task_data.energy_taken_per_tick * multiplier;
@@ -118,6 +136,7 @@ impl Employee {
         name: &'static str,
         characteristics: EmployeeCharacteristics,
         resources: EmployeeResources,
+        buffs: EmployeeBuffs,
         kanban_address: Addr<Kanban>,
     ) -> Employee {
         Employee {
@@ -127,9 +146,24 @@ impl Employee {
                     name,
                     characteristics,
                     resources,
+                    buffs,
                     kanban_address.clone(),
                 )
             }),
         }
+    }
+}
+
+pub struct Buff;
+
+impl Message for Buff {
+    type Result = ();
+}
+
+impl Handler<Buff> for EmployeeActor {
+    type Result = ();
+
+    fn handle(&mut self, buff: Buff, _ctx: &mut SyncContext<Self>) -> Self::Result {
+
     }
 }

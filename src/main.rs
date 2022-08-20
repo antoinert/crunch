@@ -3,6 +3,7 @@ mod kanban;
 mod task;
 
 use actix::Actor;
+use employee::EmployeeBuffs;
 use kanban::AddEmployee;
 
 use crate::{
@@ -22,6 +23,7 @@ fn main() {
             "John",
             Default::default(),
             Default::default(),
+            EmployeeBuffs::default(),
             kanban_address.clone(),
         );
         let employee2 = Employee::new(
@@ -33,6 +35,7 @@ fn main() {
                 focus: 80.0,
                 stress: 10.0,
             },
+            EmployeeBuffs::default(),
             kanban_address.clone(),
         );
 

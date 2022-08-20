@@ -163,7 +163,12 @@ impl Handler<WorkCompleted> for Kanban {
             if task.is_done() {
                 if let Some(task) = self.task_list.remove(&work_completed.uuid) {
                     match task.id {
-                        TaskId::CreatePR => ctx.notify(TaskId::ReviewPR.to_task()),
+                        TaskId::CreatePR => {
+                            ctx.notify(TaskId::ReviewPR.to_task())
+                        }
+                        TaskId::MergePR => {
+                            ctx.notify(TaskId::MergePR.to_task())
+                        }
                         _ => {}
                     }
                     self.done_list.push_front((work_completed.uuid, task.id));

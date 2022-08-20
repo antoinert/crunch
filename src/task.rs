@@ -5,7 +5,9 @@ use crate::employee::EmployeeActor;
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum TaskId {
     CreatePR,
-    ReviewPR
+    ReviewPR,
+    MergePR,
+    CoffeeBreak
 }
 
 impl TaskId {
@@ -28,6 +30,34 @@ impl TaskId {
             },
             TaskId::ReviewPR => Task {
                 total_energy_required: 10.0,
+                energy_taken_per_tick: 0.1,
+                energy_multipliers: TaskEnergyMultipliers {
+                    company_experience: 2.0,
+                    rigor: 2.0,
+                    programming_skills: 2.0,
+                    fitness: 1.0,
+                    energy: 1.2,
+                    focus: 1.5,
+                    stress: 0.5,
+                },
+                ..Task::default()
+            },
+            TaskId::MergePR => Task {
+                total_energy_required: 1.0,
+                energy_taken_per_tick: 0.1,
+                energy_multipliers: TaskEnergyMultipliers {
+                    company_experience: 2.0,
+                    rigor: 2.0,
+                    programming_skills: 2.0,
+                    fitness: 1.0,
+                    energy: 1.2,
+                    focus: 1.5,
+                    stress: 0.5,
+                },
+                ..Task::default()
+            },
+            TaskId::CoffeeBreak => Task {
+                total_energy_required: 1.0,
                 energy_taken_per_tick: 0.1,
                 energy_multipliers: TaskEnergyMultipliers {
                     company_experience: 2.0,
