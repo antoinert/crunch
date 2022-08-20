@@ -84,15 +84,23 @@ impl Kanban {
             context.notify(Task::default());
         }
 
+        let mut task_list = self
+            .task_list
+            .clone()
+            .into_iter()
+            .map(|(uuid, val)| (uuid, val))
+            .collect::<Vec<(usize, (Task, BTreeSet<String>))>>();
+        task_list.sort_by(|a, b| b.1 .0.progress().partial_cmp(&a.1 .0.progress()).unwrap());
+
         for (index, employee_address) in self.employee_addresses.iter().enumerate() {
-            if let Some((j, (task, _c))) = self.task_list.iter().nth(index) {
+            if let Some((j, (task, _c))) = task_list.iter().nth(index) {
                 employee_address.do_send(Work {
                     task: task.id,
                     uuid: *j,
                 })
             }
         }
-        self.draw()
+        self.draw(&task_list)
     }
 
     fn handle_keys(&mut self) {
@@ -137,7 +145,7 @@ impl Kanban {
         }
     }
 
-    fn draw(&mut self) {
+    fn draw(&mut self, sorted_task_list: &Vec<(usize, (Task, BTreeSet<String>))>) {
         let max_bar_width = 15;
         let progress_color = Color::Green;
         let done_color = Color::Blue;
@@ -169,7 +177,8 @@ impl Kanban {
         )
         .unwrap();
 
-        for (id, (task, contributors)) in self.task_list.iter() {
+        let capped_list = &sorted_task_list[0..6.min(sorted_task_list.len())];
+        for (id, (task, contributors)) in capped_list.iter() {
             // Start row
             queue!(self.stdout, cursor::MoveToNextLine(1)).unwrap();
             // Title
@@ -270,7 +279,7 @@ impl Handler<WorkCompleted> for Kanban {
                     }
                     self.done_list
                         .push_front((work_completed.uuid, task.id, contributors));
-                    if self.done_list.len() > 10 {
+                    if self.done_list.len() > 5 {
                         self.done_list.pop_back();
                     }
                 }
