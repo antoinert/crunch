@@ -1,6 +1,7 @@
 mod employee;
 mod task;
-use std::{thread::sleep, time::Duration};
+
+use actix::{Actor, SyncArbiter};
 
 use crate::{
     employee::{Employee, EmployeeType},
@@ -10,22 +11,17 @@ use crate::{
 static TICK_RATE: f32 = 10.;
 
 fn main() {
-    let mut actor = Employee::new(EmployeeType::Developer);
-    let mut tasks = vec![Task::default()];
+    let system = actix::System::new();
 
-    loop {
-        let mut to_remove = vec![];
-        for (index, task) in tasks.iter_mut().enumerate() {
-            task.process_tick(&mut actor);
-            if task.is_done() {
-                println!("Finished {:?}", task.id);
-                to_remove.push(index);
-            }
-        }
-        for id in to_remove {
-            tasks.remove(id);
-        }
+    let actor_1 = Employee::new(EmployeeType::Developer);
+    let actor_2 = Employee::new(EmployeeType::Developer);
 
-        sleep(Duration::from_secs_f32(1. / TICK_RATE));
-    }
+    // let _addr = system.block_on(async { actor_1.start(); actor_2.start(); });
+    let addr = SyncArbiter::start(2, || Employee::new(EmployeeType::Developer));
+
+    addr.do_send(Task::default());
+    addr.do_send(Task::default());
+    addr.do_send(Task::default());
+
+    system.run().expect("Something went wrong starting system.");
 }

@@ -1,3 +1,5 @@
+use actix::Message;
+
 use crate::employee::{Employee, EmployeeCharacteristics, EmployeeResources, EmployeeType};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -103,4 +105,8 @@ impl Default for Task {
             energy_multipliers: TaskEnergyMultipliers::default(),
         }
     }
+}
+
+impl Message for Task {
+    type Result = ();
 }

@@ -1,6 +1,9 @@
-use rand::Rng;
+use std::time::Duration;
 
-use crate::Task;
+use rand::Rng;
+use actix::{Actor, Context, System, Handler, AsyncContext, SyncContext};
+use std::thread::sleep;
+use crate::{Task, TICK_RATE};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EmployeeType {
@@ -56,5 +59,47 @@ impl Employee {
             characteristics: EmployeeCharacteristics::new(),
             resources: EmployeeResources::new(),
         }
+    }
+}
+
+impl Actor for Employee {
+    type Context = SyncContext<Self>;
+
+    // fn started(&mut self, ctx: &mut Self::Context) {
+    //     ctx.  notify(Task::default());
+    // }
+
+    // fn stopped(&mut self, _ctx: &mut Self::Context) {
+    //     println!("Quitting work.");
+    // }
+}
+
+impl Handler<Task> for Employee {
+    type Result = ();
+
+    fn handle(&mut self, _msg: Task, ctx: &mut SyncContext<Self>) -> Self::Result {
+        println!("Started task!");
+
+        let mut tasks = vec![Task::default()];
+
+        loop {
+            let mut to_remove = vec![];
+            for (index, task) in tasks.iter_mut().enumerate() {
+                task.process_tick(self);
+                if task.is_done() {
+                    println!("Finished {:?}", task.id);
+                    to_remove.push(index);
+                }
+            }
+            for id in to_remove {
+                tasks.remove(id);
+            }
+
+            if tasks.len() == 0 {
+                break;
+            }
+    
+            sleep(Duration::from_secs_f32(1. / TICK_RATE));
+        };
     }
 }
