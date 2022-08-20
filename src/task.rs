@@ -86,6 +86,10 @@ impl Task {
     pub fn is_done(&self) -> bool {
         self.total_energy_required <= self.energy_taken
     }
+
+    pub fn progress(&self) -> f32 {
+        self.energy_taken / self.total_energy_required
+    }
 }
 
 impl Default for Task {

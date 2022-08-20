@@ -1,10 +1,18 @@
 use std::{
     collections::HashMap,
+    io::{stdout, Stdout, Write},
     sync::atomic::{AtomicUsize, Ordering},
     time::Duration,
 };
 
 use actix::{Actor, Addr, AsyncContext, Context, Handler, Message};
+use crossterm::{
+    cursor,
+    event::{poll, read, Event},
+    execute, queue, style,
+    style::{Color, Stylize},
+    terminal, ExecutableCommand, QueueableCommand,
+};
 
 use crate::{
     employee::EmployeeActor,
@@ -18,19 +26,40 @@ pub fn create_task_id() -> usize {
 }
 
 pub struct Kanban {
+    stdout: Stdout,
     task_list: HashMap<usize, Task>,
     pub employee_addresses: Vec<Addr<EmployeeActor>>,
 }
 
 impl Kanban {
     pub fn new() -> Self {
+        let mut stdout = stdout();
+        stdout
+            .execute(terminal::Clear(terminal::ClearType::All))
+            .unwrap();
+
+        // Reset terminal
+        queue!(
+            stdout,
+            terminal::EnterAlternateScreen,
+            style::ResetColor,
+            terminal::Clear(terminal::ClearType::All),
+            cursor::MoveTo(1, 1),
+            cursor::Show,
+            cursor::EnableBlinking
+        )
+        .unwrap();
+
+        stdout.flush().unwrap();
+
         Kanban {
+            stdout,
             task_list: HashMap::new(),
             employee_addresses: vec![],
         }
     }
 
-    pub fn tick(&self) {
+    pub fn tick(&mut self) {
         for (index, employee_address) in self.employee_addresses.iter().enumerate() {
             let mut undone_tasks = self.task_list.iter().filter(|(_, task)| !task.is_done());
 
@@ -41,6 +70,45 @@ impl Kanban {
                 })
             }
         }
+        self.draw()
+    }
+
+    fn draw(&mut self) {
+        let title_width = 12;
+        let max_bar_width = 15;
+        let mut row = 0;
+        let progress_color = Color::Green;
+        // Title row
+        queue!(self.stdout, cursor::MoveTo(0, 0), style::Print("Tasks")).unwrap();
+
+        for (id, task) in self.task_list.iter() {
+            // Start row
+            queue!(self.stdout, cursor::MoveTo(0, row + 1),).unwrap();
+            // Title
+            draw_task_title(
+                &mut self.stdout,
+                &format!("{}: {:?}", *id, task.id),
+                *id,
+                title_width,
+            );
+            // Progress bar + percentage
+            draw_task_progress(
+                &mut self.stdout,
+                progress_color,
+                task.progress(),
+                max_bar_width,
+            );
+            row += 1;
+        }
+        // Flush last
+        self.stdout.flush().unwrap();
+    }
+}
+
+impl Drop for Kanban {
+    fn drop(&mut self) {
+        queue!(self.stdout, terminal::LeaveAlternateScreen);
+        self.stdout.flush().unwrap();
     }
 }
 
@@ -59,10 +127,6 @@ impl Handler<Task> for Kanban {
 
     fn handle(&mut self, task: Task, _ctx: &mut Context<Self>) -> Self::Result {
         self.task_list.insert(create_task_id(), task);
-        println!(
-            "Added task {:?} to task list. Current amount of tasks: {:?}",
-            task.id, self.task_list.len()
-        );
     }
 }
 
@@ -72,12 +136,7 @@ impl Handler<WorkCompleted> for Kanban {
     fn handle(&mut self, work_completed: WorkCompleted, _ctx: &mut Context<Self>) -> Self::Result {
         if let Some(task) = self.task_list.get_mut(&work_completed.uuid) {
             task.energy_taken += work_completed.energy_add;
-            println!(
-                "Work performed by {} {:?}, progress: {}%",
-                work_completed.employee_name,
-                task.id,
-                task.energy_taken / task.total_energy_required * 100.
-            );
+            task.energy_taken = task.energy_taken.clamp(0.0, task.total_energy_required);
         }
     }
 }
@@ -96,4 +155,51 @@ impl Handler<AddEmployee> for Kanban {
     fn handle(&mut self, add_employee: AddEmployee, _ctx: &mut Context<Self>) -> Self::Result {
         self.employee_addresses.push(add_employee.employee_address);
     }
+}
+
+fn flush_resize_events(first_resize: (u16, u16)) -> ((u16, u16), (u16, u16)) {
+    let mut last_resize = first_resize;
+    while let Ok(true) = poll(Duration::from_millis(50)) {
+        if let Ok(Event::Resize(x, y)) = read() {
+            last_resize = (x, y);
+        }
+    }
+
+    return (first_resize, last_resize);
+}
+
+fn draw_task_title<W>(w: &mut W, title: &str, uuid: usize, max_title_length: usize)
+where
+    W: Write,
+{
+    queue!(
+        w,
+        style::Print(format!("{:.len$}: ", title, len = max_title_length))
+    )
+    .unwrap();
+}
+
+fn draw_task_progress<W>(w: &mut W, color: Color, progress: f32, max_width: u16)
+where
+    W: Write,
+{
+    let limit = (progress * max_width as f32).round() as u16;
+    for col in 0..=max_width {
+        if col <= limit {
+            queue!(w, style::SetForegroundColor(color), style::Print("███")).unwrap();
+        } else {
+            queue!(
+                w,
+                style::SetForegroundColor(Color::Black),
+                style::Print("███")
+            )
+            .unwrap();
+        }
+    }
+    queue!(
+        w,
+        style::SetForegroundColor(Color::White),
+        style::Print(format!(" {:.2} %", progress * 100.0)),
+    )
+    .unwrap();
 }
