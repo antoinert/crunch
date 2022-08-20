@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{BTreeSet, HashMap, HashSet, VecDeque},
     io::{stdout, Stdout, Write},
     sync::atomic::{AtomicUsize, Ordering},
     time::Duration,
@@ -23,8 +23,8 @@ pub fn create_task_id() -> usize {
 
 pub struct Kanban {
     stdout: Stdout,
-    task_list: HashMap<usize, Task>,
-    done_list: VecDeque<(usize, TaskId)>,
+    task_list: HashMap<usize, (Task, BTreeSet<String>)>,
+    done_list: VecDeque<(usize, TaskId, BTreeSet<String>)>,
     pub employee_addresses: Vec<Addr<EmployeeActor>>,
 }
 
@@ -65,7 +65,7 @@ impl Kanban {
         }
 
         for (index, employee_address) in self.employee_addresses.iter().enumerate() {
-            if let Some((j, task)) = self.task_list.iter().nth(index) {
+            if let Some((j, (task, _c))) = self.task_list.iter().nth(index) {
                 employee_address.do_send(Work {
                     task: task.id,
                     uuid: *j,
@@ -87,13 +87,13 @@ impl Kanban {
         )
         .unwrap();
 
-        for (id, task) in self.task_list.iter() {
+        for (id, (task, contributors)) in self.task_list.iter() {
             // Start row
             queue!(self.stdout, cursor::MoveToNextLine(1)).unwrap();
             // Title
             queue!(
                 self.stdout,
-                style::Print(&format!("{0: <16}", format!("{}: {:?}: ", *id, task.id)))
+                style::Print(&format!("{0: <20}", format!("{}: {:?}: ", *id, task.id)))
             );
 
             // Progress bar + percentage
@@ -103,6 +103,10 @@ impl Kanban {
                 task.progress(),
                 max_bar_width,
             );
+
+            for c in contributors.iter() {
+                queue!(self.stdout, style::Print(&format!("{}, ", c)));
+            }
         }
         queue!(
             self.stdout,
@@ -111,13 +115,17 @@ impl Kanban {
         )
         .unwrap();
         // Draw done tasks
-        for (uuid, task) in self.done_list.iter() {
+        for (uuid, task, contributors) in self.done_list.iter() {
             queue!(
                 self.stdout,
                 cursor::MoveToNextLine(1),
-                style::Print(format!("{}: {:?}", *uuid, *task))
+                style::Print(format!("{}: {:?} ", *uuid, *task))
             )
             .unwrap();
+
+            for c in contributors.iter() {
+                queue!(self.stdout, style::Print(&format!("{}, ", c)));
+            }
         }
 
         // Flush last
@@ -149,7 +157,8 @@ impl Handler<Task> for Kanban {
     type Result = ();
 
     fn handle(&mut self, task: Task, _ctx: &mut Context<Self>) -> Self::Result {
-        self.task_list.insert(create_task_id(), task);
+        self.task_list
+            .insert(create_task_id(), (task, BTreeSet::new()));
     }
 }
 
@@ -157,18 +166,20 @@ impl Handler<WorkCompleted> for Kanban {
     type Result = ();
 
     fn handle(&mut self, work_completed: WorkCompleted, ctx: &mut Context<Self>) -> Self::Result {
-        if let Some(task) = self.task_list.get_mut(&work_completed.uuid) {
+        if let Some((task, contributors)) = self.task_list.get_mut(&work_completed.uuid) {
             task.energy_taken += work_completed.energy_add;
             task.energy_taken = task.energy_taken.clamp(0.0, task.total_energy_required);
+            contributors.insert(work_completed.employee_name.to_string());
 
             if task.is_done() {
-                if let Some(task) = self.task_list.remove(&work_completed.uuid) {
+                if let Some((task, contributors)) = self.task_list.remove(&work_completed.uuid) {
                     match task.id {
                         TaskId::CreatePR => ctx.notify(TaskId::ReviewPR.to_task()),
                         TaskId::MergePR => ctx.notify(TaskId::MergePR.to_task()),
                         _ => {}
                     }
-                    self.done_list.push_front((work_completed.uuid, task.id));
+                    self.done_list
+                        .push_front((work_completed.uuid, task.id, contributors));
                     if self.done_list.len() > 10 {
                         self.done_list.pop_back();
                     }
@@ -214,7 +225,7 @@ where
     queue!(
         w,
         style::SetForegroundColor(Color::White),
-        style::Print(format!(" {:.2} %", progress * 100.0)),
+        style::Print(format!(" {:.2} % ", progress * 100.0)),
     )
     .unwrap();
 }
