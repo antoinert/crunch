@@ -93,7 +93,7 @@ pub struct TaskEnergyMultipliers {
 
 impl TaskEnergyMultipliers {
     pub fn get_energy_cost(&self, employee: &EmployeeActor) -> f32 {
-        1.0 * employee.characteristics.rigor / 100.
+        1.0 * employee.characteristics.rigor / 50.
     }
 }
 
