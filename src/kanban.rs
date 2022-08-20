@@ -3,10 +3,11 @@ use std::{
     fs,
     io::{stdout, Stdout, Write},
     sync::atomic::{AtomicUsize, Ordering},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use actix::{Actor, Addr, AsyncContext, Context, Handler, Message, System};
+use chrono::{DateTime, Utc};
 use crossterm::{
     cursor, event,
     event::{poll, Event, KeyCode, KeyEvent},
@@ -37,6 +38,7 @@ pub struct Kanban {
     pub employee_addresses: Vec<Addr<EmployeeActor>>,
     employee_data: BTreeMap<String, EmployeeActor>,
     curr_employee: usize,
+    start_time: DateTime<Utc>,
 }
 
 impl Kanban {
@@ -61,7 +63,7 @@ impl Kanban {
         .unwrap();
 
         stdout.flush().unwrap();
-
+        let time = Utc::now();
         Kanban {
             stdout,
             task_list: HashMap::new(),
@@ -69,6 +71,7 @@ impl Kanban {
             employee_addresses: vec![],
             employee_data: BTreeMap::new(),
             curr_employee: 0,
+            start_time: time,
         }
     }
 
@@ -118,6 +121,17 @@ impl Kanban {
                 ..
             })) = event
             {
+                queue!(
+                    self.stdout,
+                    terminal::LeaveAlternateScreen,
+                    style::ResetColor,
+                    terminal::Clear(terminal::ClearType::All),
+                    cursor::MoveTo(0, 0),
+                    cursor::Show,
+                    cursor::EnableBlinking
+                )
+                .unwrap();
+                self.stdout.flush().unwrap();
                 System::current().stop();
             }
         }
@@ -126,6 +140,7 @@ impl Kanban {
     fn draw(&mut self) {
         let max_bar_width = 15;
         let progress_color = Color::Green;
+        let done_color = Color::DarkGreen;
         queue!(
             self.stdout,
             terminal::Clear(terminal::ClearType::All),
@@ -144,8 +159,15 @@ impl Kanban {
             draw_employee_card(&mut self.stdout, curr_employee, &employee_tasks);
         }
 
+        draw_time_bar(&mut self.stdout, self.start_time);
+
         // Title row
-        queue!(self.stdout, style::Print("Tasks")).unwrap();
+        queue!(
+            self.stdout,
+            style::Print("Tasks"),
+            cursor::MoveToNextLine(1)
+        )
+        .unwrap();
 
         for (id, (task, contributors)) in self.task_list.iter() {
             // Start row
@@ -167,15 +189,26 @@ impl Kanban {
 
             draw_contributors(&mut self.stdout, contributors);
         }
-        queue!(self.stdout, cursor::MoveToNextLine(1), style::Print("Done"),).unwrap();
+        if !self.done_list.is_empty() {
+            queue!(
+                self.stdout,
+                cursor::MoveToNextLine(1),
+                cursor::MoveToNextLine(1),
+                style::Print("Done"),
+                cursor::MoveToNextLine(1)
+            )
+            .unwrap();
+        }
+
         // Draw done tasks
         for (uuid, task, contributors) in self.done_list.iter() {
             queue!(
                 self.stdout,
                 cursor::MoveToNextLine(1),
-                style::Print(format!("{}: {:?} ", *uuid, *task))
+                style::Print(&format!("{0: <20}", format!("{}: {:?}: ", *uuid, *task)))
             )
             .unwrap();
+            draw_task_progress(&mut self.stdout, done_color, 1.0, max_bar_width);
 
             draw_contributors(&mut self.stdout, contributors);
         }
@@ -388,4 +421,26 @@ where
         )
         .unwrap();
     }
+}
+
+fn draw_time_bar<W>(w: &mut W, start_time: DateTime<Utc>)
+where
+    W: Write,
+{
+    let time_seconds = (Utc::now() - start_time).num_seconds() as f32 * TICK_RATE * 10.0;
+    let time_in_imaginary_hours = time_seconds / 60.0;
+    let days = (time_in_imaginary_hours / 24.0) as i32;
+    let hours = (time_in_imaginary_hours - (days as f32 * 24.0)).round() as i32;
+    queue!(
+        w,
+        cursor::MoveToNextLine(1),
+        style::PrintStyledContent(
+            format!("Days: {}, Hours: {:.2} hours", days, hours)
+                .underlined()
+                .green()
+        ),
+        cursor::MoveToNextLine(1),
+        cursor::MoveToNextLine(1),
+    )
+    .unwrap();
 }
