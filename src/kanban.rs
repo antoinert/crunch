@@ -9,7 +9,7 @@ use rand::Rng;
 
 use crate::{
     employee::EmployeeActor,
-    task::{Task, Work, WorkCompleted}
+    task::{Task, Work, WorkCompleted, TaskId}
 };
 
 static TICK_RATE: f32 = 10.;
@@ -75,7 +75,7 @@ impl Handler<Task> for Kanban {
 impl Handler<WorkCompleted> for Kanban {
     type Result = ();
 
-    fn handle(&mut self, work_completed: WorkCompleted, _ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, work_completed: WorkCompleted, ctx: &mut Context<Self>) -> Self::Result {
         if let Some(task) = self.task_list.get_mut(&work_completed.uuid) {
             task.energy_taken += work_completed.energy_add;
             println!(
@@ -86,7 +86,14 @@ impl Handler<WorkCompleted> for Kanban {
             );
 
             if task.is_done() {
-                self.task_list.remove(&work_completed.uuid);
+                if let Some(task) = self.task_list.remove(&work_completed.uuid) {
+                    match task.id {
+                        TaskId::CreatePR => {
+                            ctx.notify(TaskId::ReviewPR.to_task())
+                        }
+                        _ => {}
+                    }
+                }
             }
         }
     }
