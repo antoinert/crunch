@@ -140,7 +140,7 @@ impl Kanban {
     fn draw(&mut self) {
         let max_bar_width = 15;
         let progress_color = Color::Green;
-        let done_color = Color::DarkGreen;
+        let done_color = Color::Blue;
         queue!(
             self.stdout,
             terminal::Clear(terminal::ClearType::All),
@@ -310,7 +310,7 @@ where
 {
     let limit = (progress * max_width as f32).round() as u16;
     for col in 0..=max_width {
-        if col <= limit {
+        if col < limit || progress == 1.0 {
             queue!(w, style::SetForegroundColor(color), style::Print("███")).unwrap();
         } else {
             queue!(
@@ -391,16 +391,30 @@ where
         cursor::MoveTo(section_start.0, section_start.1),
         style::PrintStyledContent("Characteristics".underlined().red()),
         cursor::MoveTo(section_start.0, section_start.1 + 2),
-        style::Print(&format!("{0: <20}", format!("Rigor: {:?}", employee.characteristics.rigor))),
+        style::Print(&format!(
+            "{0: <20}",
+            format!("Rigor: {:.0}", employee.characteristics.rigor)
+        )),
         cursor::MoveTo(section_start.0, section_start.1 + 3),
-        style::Print(&format!("{0: <20}", format!("Experience: {:?}", employee.characteristics.company_experience))),
+        style::Print(&format!(
+            "{0: <20}",
+            format!(
+                "Experience: {:.0}",
+                employee.characteristics.company_experience
+            )
+        )),
         cursor::MoveTo(section_start.0, section_start.1 + 4),
-        style::Print(&format!("{0: <20}", format!("Skills: {:?}", employee.characteristics.programming_skills))),
+        style::Print(&format!(
+            "{0: <20}",
+            format!("Skills: {:.0}", employee.characteristics.programming_skills)
+        )),
         cursor::MoveTo(section_start.0, section_start.1 + 5),
-        style::Print(&format!("{0: <20}", format!("Fitness: {:?}", employee.characteristics.fitness))), 
-    ).unwrap();
-
-
+        style::Print(&format!(
+            "{0: <20}",
+            format!("Fitness: {:.0}", employee.characteristics.fitness)
+        )),
+    )
+    .unwrap();
 }
 
 fn draw_current_tasks<W>(w: &mut W, employee_tasks: &Vec<Task>)
