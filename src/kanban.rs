@@ -386,6 +386,8 @@ where
 
     draw_characteristics(w, employee);
 
+    draw_resources(w, employee);
+
     queue!(w, cursor::MoveTo(0, card_height + 1),).unwrap();
 }
 
@@ -393,7 +395,7 @@ fn draw_characteristics<W>(w: &mut W, employee: &EmployeeActor)
 where
     W: Write,
 {
-    let section_start = (65, 2);
+    let section_start = (70, 2);
 
     queue!(
         w,
@@ -422,6 +424,36 @@ where
             "{0: <20}",
             format!("Fitness: {:.0}", employee.characteristics.fitness)
         )),
+    )
+    .unwrap();
+}
+
+fn draw_resources<W>(w: &mut W, employee: &EmployeeActor)
+where
+    W: Write,
+{
+    let section_start = (70, 9);
+
+    queue!(
+        w,
+        cursor::MoveTo(section_start.0, section_start.1),
+        style::PrintStyledContent("Resources".underlined().red()),
+        cursor::MoveTo(section_start.0, section_start.1 + 2),
+        style::Print(&format!(
+            "{0: <20}",
+            format!("Energy: {:.0}", employee.resources.energy)
+        )),
+        cursor::MoveTo(section_start.0, section_start.1 + 3),
+        style::Print(&format!(
+            "{0: <20}",
+            format!("Focus: {:.0}", employee.resources.focus)
+        )),
+        cursor::MoveTo(section_start.0, section_start.1 + 4),
+        style::Print(&format!(
+            "{0: <20}",
+            format!("Stress: {:.0}", employee.resources.stress)
+        )),
+        cursor::MoveTo(section_start.0, section_start.1 + 5),
     )
     .unwrap();
 }
