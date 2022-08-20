@@ -1,21 +1,33 @@
-use std::time::{Duration, Instant};
+use std::{
+    borrow::Borrow,
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
+use actix::{Actor, Addr, AsyncContext, Context, Handler, SyncArbiter, SyncContext, System};
 use rand::Rng;
-use actix::{Actor, Context, System, Handler, AsyncContext, SyncContext};
-use std::thread::sleep;
+
 use crate::{Task, TICK_RATE};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EmployeeType {
+    #[allow(unused)]
     Manager,
     Developer,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct EmployeeCharacteristics {
     pub company_experience: f32,
     pub rigor: f32,
     pub programming_skills: f32,
     pub fitness: f32,
+}
+
+impl Default for EmployeeCharacteristics {
+    fn default() -> Self {
+        EmployeeCharacteristics::new()
+    }
 }
 
 impl EmployeeCharacteristics {
@@ -30,10 +42,17 @@ impl EmployeeCharacteristics {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct EmployeeResources {
     pub energy: f32,
     pub focus: f32,
     pub stress: f32,
+}
+
+impl Default for EmployeeResources {
+    fn default() -> Self {
+        EmployeeResources::new()
+    }
 }
 
 impl EmployeeResources {
@@ -46,58 +65,57 @@ impl EmployeeResources {
     }
 }
 
-pub struct Employee {
-    pub employee_name: String,
+#[derive(Debug, Copy, Clone)]
+pub struct EmployeeActor {
+    pub employee_name: &'static str,
     pub employee_type: EmployeeType,
     pub characteristics: EmployeeCharacteristics,
     pub resources: EmployeeResources,
 }
 
-impl Employee {
-    pub fn new(employee_type: EmployeeType, name: String) -> Employee {
-        Employee {
+impl EmployeeActor {
+    pub fn new(
+        employee_type: EmployeeType,
+        name: &'static str,
+        characteristics: EmployeeCharacteristics,
+        resources: EmployeeResources,
+    ) -> EmployeeActor {
+        EmployeeActor {
             employee_name: name,
             employee_type,
-            characteristics: EmployeeCharacteristics::new(),
-            resources: EmployeeResources::new(),
+            characteristics,
+            resources,
         }
-    }
-
-    pub fn with_characteristics(mut self, characteristics: EmployeeCharacteristics) -> Employee {
-        self.characteristics = characteristics;
-
-        self
-    }
-
-    pub fn with_resources(mut self, resources: EmployeeResources) -> Employee {
-        self.resources = resources;
-
-        self
     }
 }
 
-impl Actor for Employee {
+impl Actor for EmployeeActor {
     type Context = SyncContext<Self>;
 }
 
-impl Handler<Task> for Employee {
+impl Handler<Task> for EmployeeActor {
     type Result = ();
 
     fn handle(&mut self, mut task: Task, _ctx: &mut SyncContext<Self>) -> Self::Result {
-        println!("{} started task {:?}!", self.employee_name, task.id);
+        task.process_tick(self);
+    }
+}
 
-        let timer = Instant::now();
+pub struct Employee {
+    pub addr: Addr<EmployeeActor>,
+}
 
-        loop {
-            task.process_tick(self);
-
-            if task.is_done() {
-                break;
-            }
-
-            sleep(Duration::from_secs_f32(1. / TICK_RATE));
-        };
-
-        println!("{} finished task {:?} in {} seconds!", self.employee_name, task.id, timer.elapsed().as_secs());
+impl Employee {
+    pub fn new(
+        employee_type: EmployeeType,
+        name: &'static str,
+        characteristics: EmployeeCharacteristics,
+        resources: EmployeeResources,
+    ) -> Employee {
+        Employee {
+            addr: SyncArbiter::start(1, move || {
+                EmployeeActor::new(employee_type, name, characteristics, resources)
+            }),
+        }
     }
 }

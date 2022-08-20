@@ -1,13 +1,16 @@
 use actix::Message;
 
-use crate::employee::{Employee, EmployeeCharacteristics, EmployeeResources, EmployeeType};
+use crate::employee::{EmployeeActor, EmployeeCharacteristics, EmployeeResources};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum TaskId {
     CreatePR,
+    #[allow(unused)]
+    Idle,
 }
 
 impl TaskId {
+    #[allow(unused)]
     pub fn to_task(&self) -> Task {
         match *self {
             TaskId::CreatePR => Task {
@@ -22,6 +25,11 @@ impl TaskId {
                     focus: 1.5,
                     stress: 0.5,
                 },
+                ..Task::default()
+            },
+            TaskId::Idle => Task {
+                total_energy_required: 1.0,
+                energy_taken_per_tick: 0.01,
                 ..Task::default()
             },
         }
@@ -78,11 +86,12 @@ pub struct Task {
 }
 
 impl Task {
+    #[allow(unused)]
     pub fn is_done(&self) -> bool {
         self.total_energy_required <= self.energy_taken
     }
 
-    pub fn process_tick(&mut self, employee: &mut Employee) {
+    pub fn process_tick(&mut self, employee: &mut EmployeeActor) {
         let multiplier = self
             .energy_multipliers
             .get_energy_cost(&employee.characteristics, &employee.resources);
