@@ -1,6 +1,6 @@
 use actix::Message;
 
-use crate::employee::{EmployeeActor};
+use crate::employee::EmployeeActor;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum TaskId {

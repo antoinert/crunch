@@ -1,11 +1,16 @@
 use std::{
     collections::HashMap,
-    sync::atomic::{AtomicUsize, Ordering}, time::Duration,
+    sync::atomic::{AtomicUsize, Ordering},
+    time::Duration,
 };
 
-use actix::{Actor, Context, Handler, Addr, Message, AsyncContext};
+use actix::{Actor, Addr, AsyncContext, Context, Handler, Message};
 
-use crate::{task::{Task, WorkCompleted, Work}, employee::EmployeeActor, TICK_RATE};
+use crate::{
+    employee::EmployeeActor,
+    task::{Task, Work, WorkCompleted},
+    TICK_RATE,
+};
 
 pub fn create_task_id() -> usize {
     static COUNTER: AtomicUsize = AtomicUsize::new(1);
@@ -14,7 +19,7 @@ pub fn create_task_id() -> usize {
 
 pub struct Kanban {
     task_list: HashMap<usize, Task>,
-    pub employee_addresses: Vec<Addr<EmployeeActor>>
+    pub employee_addresses: Vec<Addr<EmployeeActor>>,
 }
 
 impl Kanban {
@@ -69,14 +74,16 @@ impl Handler<WorkCompleted> for Kanban {
             task.energy_taken += work_completed.energy_add;
             println!(
                 "Work performed by {} {:?}, progress: {}%",
-                work_completed.employee_name, task.id, task.energy_taken / task.total_energy_required * 100.
+                work_completed.employee_name,
+                task.id,
+                task.energy_taken / task.total_energy_required * 100.
             );
         }
     }
 }
 
 pub struct AddEmployee {
-    pub employee_address: Addr<EmployeeActor>
+    pub employee_address: Addr<EmployeeActor>,
 }
 
 impl Message for AddEmployee {

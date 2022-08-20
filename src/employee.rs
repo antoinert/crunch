@@ -3,7 +3,7 @@ use rand::Rng;
 
 use crate::{
     task::{Work, WorkCompleted},
-    Kanban
+    Kanban,
 };
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
