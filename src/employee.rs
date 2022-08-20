@@ -7,7 +7,7 @@ use std::{
 use actix::{Actor, Addr, AsyncContext, Context, Handler, SyncArbiter, SyncContext, System};
 use rand::Rng;
 
-use crate::{Task, TICK_RATE};
+use crate::{task::Work, Kanban, Task, TICK_RATE};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EmployeeType {
@@ -65,12 +65,13 @@ impl EmployeeResources {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct EmployeeActor {
     pub employee_name: &'static str,
     pub employee_type: EmployeeType,
     pub characteristics: EmployeeCharacteristics,
     pub resources: EmployeeResources,
+    pub kanban_address: Addr<Kanban>,
 }
 
 impl EmployeeActor {
@@ -79,12 +80,14 @@ impl EmployeeActor {
         name: &'static str,
         characteristics: EmployeeCharacteristics,
         resources: EmployeeResources,
+        kanban_address: Addr<Kanban>,
     ) -> EmployeeActor {
         EmployeeActor {
             employee_name: name,
             employee_type,
             characteristics,
             resources,
+            kanban_address,
         }
     }
 }
@@ -93,12 +96,16 @@ impl Actor for EmployeeActor {
     type Context = SyncContext<Self>;
 }
 
-impl Handler<Task> for EmployeeActor {
+impl Handler<Work> for EmployeeActor {
     type Result = ();
 
-    fn handle(&mut self, mut task: Task, _ctx: &mut SyncContext<Self>) -> Self::Result {
-        println!("Tick task {:?} by {}!", task.id, self.employee_name);
-        task.process_tick(self);
+    fn handle(&mut self, mut work: Work, _ctx: &mut SyncContext<Self>) -> Self::Result {
+        println!("Tick task {:?} by {}!", work.task, self.employee_name);
+
+        let task_data = work.task.to_task();
+        let multiplier = task_data.energy_multipliers.get_energy_cost(&self);
+        let energy_add = task_data.energy_taken_per_tick * multiplier;
+        // ToDo: Send energy add to right task in kanban
     }
 }
 
@@ -112,10 +119,17 @@ impl Employee {
         name: &'static str,
         characteristics: EmployeeCharacteristics,
         resources: EmployeeResources,
+        kanban_address: Addr<Kanban>,
     ) -> Employee {
         Employee {
             addr: SyncArbiter::start(1, move || {
-                EmployeeActor::new(employee_type, name, characteristics, resources)
+                EmployeeActor::new(
+                    employee_type,
+                    name,
+                    characteristics,
+                    resources,
+                    kanban_address.clone(),
+                )
             }),
         }
     }

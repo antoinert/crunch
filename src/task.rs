@@ -50,12 +50,8 @@ pub struct TaskEnergyMultipliers {
 }
 
 impl TaskEnergyMultipliers {
-    fn get_energy_cost(
-        &self,
-        chars: &EmployeeCharacteristics,
-        _resources: &EmployeeResources,
-    ) -> f32 {
-        1.0 * chars.rigor / 100.
+    pub fn get_energy_cost(&self, employee: &EmployeeActor) -> f32 {
+        1.0 * employee.characteristics.rigor / 100.
     }
 }
 
@@ -90,14 +86,6 @@ impl Task {
     pub fn is_done(&self) -> bool {
         self.total_energy_required <= self.energy_taken
     }
-
-    pub fn process_tick(&mut self, employee: &mut EmployeeActor) {
-        let multiplier = self
-            .energy_multipliers
-            .get_energy_cost(&employee.characteristics, &employee.resources);
-        let energy_add = self.energy_taken_per_tick * multiplier;
-        self.energy_taken += energy_add;
-    }
 }
 
 impl Default for Task {
@@ -113,5 +101,13 @@ impl Default for Task {
 }
 
 impl Message for Task {
+    type Result = ();
+}
+
+pub struct Work {
+    pub task: TaskId,
+}
+
+impl Message for Work {
     type Result = ();
 }
