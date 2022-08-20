@@ -104,9 +104,7 @@ impl Kanban {
                 max_bar_width,
             );
 
-            for c in contributors.iter() {
-                queue!(self.stdout, style::Print(&format!("{}, ", c)));
-            }
+            draw_contributors(&mut self.stdout, contributors);
         }
         queue!(
             self.stdout,
@@ -123,9 +121,7 @@ impl Kanban {
             )
             .unwrap();
 
-            for c in contributors.iter() {
-                queue!(self.stdout, style::Print(&format!("{}, ", c)));
-            }
+            draw_contributors(&mut self.stdout, contributors);
         }
 
         // Flush last
@@ -228,4 +224,18 @@ where
         style::Print(format!(" {:.2} % ", progress * 100.0)),
     )
     .unwrap();
+}
+
+fn draw_contributors<W>(w: &mut W, contributors: &BTreeSet<String>)
+where
+    W: Write,
+{
+    let mut count = 0;
+    for c in contributors.iter() {
+        queue!(w, style::Print(format!("{c}"))).unwrap();
+        count += 1;
+        if count < contributors.len() {
+            queue!(w, style::Print(", ")).unwrap();
+        }
+    }
 }
