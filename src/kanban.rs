@@ -342,7 +342,32 @@ where
 
     draw_current_tasks(w, employee_tasks);
 
+    draw_characteristics(w, employee);
+
     queue!(w, cursor::MoveTo(0, card_height + 1),).unwrap();
+}
+
+fn draw_characteristics<W>(w: &mut W, employee: &EmployeeActor)
+where
+    W: Write,
+{
+    let section_start = (65, 2);
+
+    queue!(
+        w,
+        cursor::MoveTo(section_start.0, section_start.1),
+        style::PrintStyledContent("Characteristics".underlined().red()),
+        cursor::MoveTo(section_start.0, section_start.1 + 2),
+        style::Print(&format!("{0: <20}", format!("Rigor: {:?}", employee.characteristics.rigor))),
+        cursor::MoveTo(section_start.0, section_start.1 + 3),
+        style::Print(&format!("{0: <20}", format!("Experience: {:?}", employee.characteristics.company_experience))),
+        cursor::MoveTo(section_start.0, section_start.1 + 4),
+        style::Print(&format!("{0: <20}", format!("Skills: {:?}", employee.characteristics.programming_skills))),
+        cursor::MoveTo(section_start.0, section_start.1 + 5),
+        style::Print(&format!("{0: <20}", format!("Fitness: {:?}", employee.characteristics.fitness))), 
+    ).unwrap();
+
+
 }
 
 fn draw_current_tasks<W>(w: &mut W, employee_tasks: &Vec<Task>)
