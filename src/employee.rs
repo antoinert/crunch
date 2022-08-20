@@ -1,15 +1,9 @@
-use std::{
-    borrow::Borrow,
-    thread::sleep,
-    time::{Duration, Instant},
-};
-
-use actix::{Actor, Addr, AsyncContext, Context, Handler, SyncArbiter, SyncContext, System};
+use actix::{Actor, Addr, Handler, SyncArbiter, SyncContext};
 use rand::Rng;
 
 use crate::{
     task::{Work, WorkCompleted},
-    Kanban, Task, TICK_RATE,
+    Kanban
 };
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -102,17 +96,15 @@ impl Actor for EmployeeActor {
 impl Handler<Work> for EmployeeActor {
     type Result = ();
 
-    fn handle(&mut self, mut work: Work, _ctx: &mut SyncContext<Self>) -> Self::Result {
-        println!("Tick task {:?} by {}!", work.task, self.employee_name);
-
+    fn handle(&mut self, work: Work, _ctx: &mut SyncContext<Self>) -> Self::Result {
         let task_data = work.task.to_task();
         let multiplier = task_data.energy_multipliers.get_energy_cost(&self);
         let energy_add = task_data.energy_taken_per_tick * multiplier;
         self.kanban_address.do_send(WorkCompleted {
+            employee_name: self.employee_name,
             uuid: work.uuid,
             energy_add,
         });
-        // ToDo: Send energy add to right task in kanban
     }
 }
 

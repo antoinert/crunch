@@ -1,6 +1,6 @@
 use actix::Message;
 
-use crate::employee::{EmployeeActor, EmployeeCharacteristics, EmployeeResources};
+use crate::employee::{EmployeeActor};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum TaskId {
@@ -114,6 +114,7 @@ impl Message for Work {
 }
 
 pub struct WorkCompleted {
+    pub employee_name: &'static str,
     pub uuid: usize,
     pub energy_add: f32,
 }

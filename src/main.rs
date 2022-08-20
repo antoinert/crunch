@@ -2,12 +2,13 @@ mod employee;
 mod kanban;
 mod task;
 
-use actix::{Actor, SyncArbiter};
+use actix::{Actor};
+use kanban::{AddEmployee};
 
 use crate::{
     employee::{Employee, EmployeeCharacteristics, EmployeeResources, EmployeeType},
     kanban::Kanban,
-    task::{Task, TaskId, Work},
+    task::{Task},
 };
 
 #[allow(unused)]
@@ -17,14 +18,14 @@ fn main() {
     let system = actix::System::new();
 
     system.block_on(async {
-        let kanban = Kanban::new().start();
+        let kanban_address = Kanban::new().start();
 
         let employee1 = Employee::new(
             EmployeeType::Developer,
             "John",
             Default::default(),
             Default::default(),
-            kanban.clone(),
+            kanban_address.clone(),
         );
         let employee2 = Employee::new(
             EmployeeType::Developer,
@@ -35,30 +36,15 @@ fn main() {
                 focus: 80.0,
                 stress: 10.0,
             },
-            kanban,
+            kanban_address.clone(),
         );
 
-        // ToDo Create tasks by kanban
-        employee1.addr.do_send(Work {
-            task: TaskId::CreatePR,
-            uuid: 1,
-        });
-        employee1.addr.do_send(Work {
-            task: TaskId::CreatePR,
-            uuid: 1,
-        });
-        employee1.addr.do_send(Work {
-            task: TaskId::CreatePR,
-            uuid: 1,
-        });
-        employee2.addr.do_send(Work {
-            task: TaskId::CreatePR,
-            uuid: 1,
-        });
-        employee2.addr.do_send(Work {
-            task: TaskId::CreatePR,
-            uuid: 1,
-        });
+        kanban_address.do_send(AddEmployee { employee_address: employee1.addr });
+        kanban_address.do_send(AddEmployee { employee_address: employee2.addr });
+
+        kanban_address.do_send(Task::default());
+        kanban_address.do_send(Task::default());
+        kanban_address.do_send(Task::default());
     });
 
     system.run().expect("Something went wrong starting system.");
