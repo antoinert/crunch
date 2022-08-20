@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use rand::Rng;
 use actix::{Actor, Context, System, Handler, AsyncContext, SyncContext};
@@ -47,14 +47,16 @@ impl EmployeeResources {
 }
 
 pub struct Employee {
+    pub employee_name: String,
     pub employee_type: EmployeeType,
     pub characteristics: EmployeeCharacteristics,
     pub resources: EmployeeResources,
 }
 
 impl Employee {
-    pub fn new(employee_type: EmployeeType) -> Employee {
+    pub fn new(employee_type: EmployeeType, name: String) -> Employee {
         Employee {
+            employee_name: name,
             employee_type,
             characteristics: EmployeeCharacteristics::new(),
             resources: EmployeeResources::new(),
@@ -81,31 +83,21 @@ impl Actor for Employee {
 impl Handler<Task> for Employee {
     type Result = ();
 
-    fn handle(&mut self, msg: Task, _ctx: &mut SyncContext<Self>) -> Self::Result {
-        println!("Started task! {}", msg.label);
+    fn handle(&mut self, mut task: Task, _ctx: &mut SyncContext<Self>) -> Self::Result {
+        println!("{} started task {:?}!", self.employee_name, task.id);
 
-        let mut tasks = vec![Task::default()];
+        let timer = Instant::now();
 
         loop {
-            let mut to_remove = vec![];
-            for (index, task) in tasks.iter_mut().enumerate() {
-                task.process_tick(self);
-                if task.is_done() {
-                    println!("Finished {:?}", task.id);
-                    to_remove.push(index);
-                }
-            }
-            for id in to_remove {
-                tasks.remove(id);
-            }
+            task.process_tick(self);
 
-            if tasks.len() == 0 {
+            if task.is_done() {
                 break;
             }
-    
+
             sleep(Duration::from_secs_f32(1. / TICK_RATE));
         };
 
-        println!("Finished task! {}", msg.label);
+        println!("{} finished task {:?} in {} seconds!", self.employee_name, task.id, timer.elapsed().as_secs());
     }
 }

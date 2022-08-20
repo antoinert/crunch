@@ -67,7 +67,6 @@ impl Default for TaskEnergyMultipliers {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Task {
-    pub label: u32,
     pub id: TaskId,
     /// How much energy is needed in total
     pub total_energy_required: f32,
@@ -89,17 +88,12 @@ impl Task {
             .get_energy_cost(&employee.characteristics, &employee.resources);
         let energy_add = self.energy_taken_per_tick * multiplier;
         self.energy_taken += energy_add;
-        // println!(
-        //     "{:?} Energy taken {} out of {}. Tick: {}",
-        //     self.id, self.energy_taken, self.total_energy_required, energy_add
-        // );
     }
 }
 
 impl Default for Task {
     fn default() -> Self {
         Task {
-            label: 1,
             id: TaskId::CreatePR,
             total_energy_required: 5.0,
             energy_taken: 0.0,
