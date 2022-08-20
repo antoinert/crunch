@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     io::{stdout, Stdout, Write},
     sync::atomic::{AtomicUsize, Ordering},
     time::Duration,
@@ -24,6 +24,7 @@ pub fn create_task_id() -> usize {
 pub struct Kanban {
     stdout: Stdout,
     task_list: HashMap<usize, Task>,
+    done_list: VecDeque<(usize, TaskId)>,
     pub employee_addresses: Vec<Addr<EmployeeActor>>,
 }
 
@@ -51,6 +52,7 @@ impl Kanban {
         Kanban {
             stdout,
             task_list: HashMap::new(),
+            done_list: VecDeque::new(),
             employee_addresses: vec![],
         }
     }
@@ -99,6 +101,24 @@ impl Kanban {
             );
             row += 1;
         }
+        queue!(
+            self.stdout,
+            cursor::MoveTo(0, row + 1),
+            style::Print("Done")
+        )
+        .unwrap();
+        row += 1;
+        // Draw done tasks
+        for (uuid, task) in self.done_list.iter() {
+            queue!(
+                self.stdout,
+                cursor::MoveTo(0, row + 1),
+                style::Print(format!("{}: {:?}", *uuid, *task))
+            )
+            .unwrap();
+            row += 1;
+        }
+
         // Flush last
         self.stdout.flush().unwrap();
     }
@@ -146,6 +166,10 @@ impl Handler<WorkCompleted> for Kanban {
                         TaskId::CreatePR => ctx.notify(TaskId::ReviewPR.to_task()),
                         _ => {}
                     }
+                    self.done_list.push_front((work_completed.uuid, task.id));
+                    if self.done_list.len() > 10 {
+                        self.done_list.pop_back();
+                    }
                 }
             }
         }
@@ -174,7 +198,7 @@ where
 {
     queue!(
         w,
-        style::Print(format!("{:.len$}: ", title, len = max_title_length))
+        style::Print(format!("{:>len$}: ", title, len = max_title_length))
     )
     .unwrap();
 }
