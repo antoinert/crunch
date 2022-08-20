@@ -111,8 +111,10 @@ impl EmployeeActor {
     fn spawn_tasks(&self) {
         let mut rng = rand::thread_rng();
 
-        if rng.gen_bool((0.01 / self.resources.focus / 0.01).into()) {
-            self.kanban_address.do_send(TaskId::CoffeeBreak.to_task())
+        if self.resources.focus < 30. {
+            if rng.gen_bool(0.01) {
+                self.kanban_address.do_send(TaskId::CoffeeBreak.to_task())
+            }
         }
     }
 }
@@ -130,6 +132,10 @@ impl Handler<Work> for EmployeeActor {
         let task_data = work.task.to_task();
         let multiplier = task_data.energy_multipliers.get_energy_cost(&self);
         let energy_add = task_data.energy_taken_per_tick * multiplier;
+
+        self.resources.energy -= energy_add;
+        self.resources.focus -= energy_add * 2.;
+
         self.kanban_address.do_send(WorkCompleted {
             employee_address: ctx.address(),
             employee_name: self.employee_name,
