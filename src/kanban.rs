@@ -395,7 +395,7 @@ fn draw_characteristics<W>(w: &mut W, employee: &EmployeeActor)
 where
     W: Write,
 {
-    let section_start = (70, 2);
+    let section_start = (69, 2);
 
     queue!(
         w,
@@ -432,7 +432,7 @@ fn draw_resources<W>(w: &mut W, employee: &EmployeeActor)
 where
     W: Write,
 {
-    let section_start = (70, 9);
+    let section_start = (69, 9);
 
     queue!(
         w,
