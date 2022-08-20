@@ -19,7 +19,7 @@ use crossterm::{
 use rand::Rng;
 
 use crate::{
-    employee::EmployeeActor,
+    employee::{EmployeeActor, BuffId, Buff},
     task::{Task, TaskId, Work, WorkCompleted},
 };
 
@@ -154,7 +154,7 @@ impl Kanban {
             queue!(
                 self.stdout,
                 style::Print(&format!("{0: <20}", format!("{}: {:?}: ", *id, task.id)))
-            );
+            ).unwrap();
 
             // Progress bar + percentage
             draw_task_progress(
@@ -226,7 +226,10 @@ impl Handler<WorkCompleted> for Kanban {
                 if let Some((task, contributors)) = self.task_list.remove(&work_completed.uuid) {
                     match task.id {
                         TaskId::CreatePR => ctx.notify(TaskId::ReviewPR.to_task()),
-                        TaskId::MergePR => ctx.notify(TaskId::MergePR.to_task()),
+                        TaskId::ReviewPR => ctx.notify(TaskId::MergePR.to_task()),
+                        TaskId::CoffeeBreak => {
+                            work_completed.employee_address.do_send(Buff { id: BuffId::Caffeinated });
+                        }
                         _ => {}
                     }
                     self.done_list

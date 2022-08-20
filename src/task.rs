@@ -1,4 +1,4 @@
-use actix::Message;
+use actix::{Message, Addr};
 
 use crate::employee::EmployeeActor;
 
@@ -160,6 +160,7 @@ impl Message for Work {
 }
 
 pub struct WorkCompleted {
+    pub employee_address: Addr<EmployeeActor>,
     pub employee_name: &'static str,
     pub uuid: usize,
     pub energy_add: f32,
