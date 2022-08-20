@@ -97,6 +97,7 @@ impl Handler<Task> for EmployeeActor {
     type Result = ();
 
     fn handle(&mut self, mut task: Task, _ctx: &mut SyncContext<Self>) -> Self::Result {
+        println!("Tick task {:?} by {}!", task.id, self.employee_name);
         task.process_tick(self);
     }
 }

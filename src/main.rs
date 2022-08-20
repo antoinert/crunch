@@ -1,10 +1,12 @@
 mod employee;
+mod kanban;
 mod task;
 
-use employee::{EmployeeCharacteristics, EmployeeResources};
+use actix::{Actor, SyncArbiter};
 
 use crate::{
-    employee::{Employee, EmployeeType},
+    employee::{Employee, EmployeeCharacteristics, EmployeeResources, EmployeeType},
+    kanban::Kanban,
     task::Task,
 };
 
@@ -13,38 +15,41 @@ static TICK_RATE: f32 = 10.;
 
 fn main() {
     let system = actix::System::new();
+    system.block_on(async {
+        let employee1 = Employee::new(
+            EmployeeType::Developer,
+            "John",
+            Default::default(),
+            Default::default(),
+        );
+        let employee2 = Employee::new(
+            EmployeeType::Developer,
+            "Kelly",
+            EmployeeCharacteristics::new(),
+            EmployeeResources {
+                energy: 50.0,
+                focus: 80.0,
+                stress: 10.0,
+            },
+        );
 
-    let employee1 = Employee::new(
-        EmployeeType::Developer,
-        "John",
-        Default::default(),
-        Default::default(),
-    );
-    let employee2 = Employee::new(
-        EmployeeType::Developer,
-        "Kelly",
-        EmployeeCharacteristics::new(),
-        EmployeeResources {
-            energy: 50.0,
-            focus: 80.0,
-            stress: 10.0,
-        },
-    );
+        let kanban = Kanban::new().start();
 
-    employee1.addr.do_send(Task {
-        ..Default::default()
-    });
-    employee1.addr.do_send(Task {
-        ..Default::default()
-    });
-    employee1.addr.do_send(Task {
-        ..Default::default()
-    });
-    employee2.addr.do_send(Task {
-        ..Default::default()
-    });
-    employee2.addr.do_send(Task {
-        ..Default::default()
+        employee1.addr.do_send(Task {
+            ..Default::default()
+        });
+        employee1.addr.do_send(Task {
+            ..Default::default()
+        });
+        employee1.addr.do_send(Task {
+            ..Default::default()
+        });
+        employee2.addr.do_send(Task {
+            ..Default::default()
+        });
+        employee2.addr.do_send(Task {
+            ..Default::default()
+        });
     });
 
     system.run().expect("Something went wrong starting system.");
