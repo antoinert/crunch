@@ -1,5 +1,4 @@
 use std::{
-    cmp::Ordering,
     collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
     fs,
     io::{stdout, Stdout, Write},
@@ -18,7 +17,7 @@ use crossterm::{
     terminal::enable_raw_mode,
     ExecutableCommand,
 };
-use rand::{prelude::SliceRandom, Rng};
+use rand::Rng;
 
 use crate::{
     employee::{Buff, BuffId, EmployeeActor},

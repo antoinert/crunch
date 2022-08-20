@@ -113,6 +113,7 @@ impl EmployeeActor {
 
         if self.resources.focus < 30. {
             if rng.gen_bool(0.01) {
+                self.kanban_address.do_send(TaskId::CoffeeBreak.to_task());
                 self.kanban_address.do_send(TaskId::CoffeeBreak.to_task())
             }
         }
@@ -183,7 +184,7 @@ impl BuffId {
             BuffId::Caffeinated => {
                 let mut bonus_resources = EmployeeResources::empty();
                 bonus_resources.focus += 30.0;
-                bonus_resources.energy += 10.0;
+                bonus_resources.energy += 20.0;
 
                 bonus_resources
             }
