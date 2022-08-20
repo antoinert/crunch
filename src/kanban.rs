@@ -76,22 +76,26 @@ impl Kanban {
     }
 
     fn draw(&mut self) {
-        let title_width = 12;
         let max_bar_width = 15;
-        let mut row = 0;
         let progress_color = Color::Green;
         // Title row
-        queue!(self.stdout, cursor::MoveTo(0, 0), style::Print("Tasks")).unwrap();
+        queue!(
+            self.stdout,
+            terminal::Clear(terminal::ClearType::All),
+            cursor::MoveTo(0, 0),
+            style::Print("Tasks")
+        )
+        .unwrap();
 
         for (id, task) in self.task_list.iter() {
             // Start row
-            queue!(self.stdout, cursor::MoveTo(0, row + 1),).unwrap();
+            queue!(self.stdout, cursor::MoveToNextLine(1)).unwrap();
             // Title
-            draw_task_title(
-                &mut self.stdout,
-                &format!("{}: {:?}", *id, task.id),
-                title_width,
+            queue!(
+                self.stdout,
+                style::Print(&format!("{0: <16}", format!("{}: {:?}: ", *id, task.id)))
             );
+
             // Progress bar + percentage
             draw_task_progress(
                 &mut self.stdout,
@@ -99,24 +103,21 @@ impl Kanban {
                 task.progress(),
                 max_bar_width,
             );
-            row += 1;
         }
         queue!(
             self.stdout,
-            cursor::MoveTo(0, row + 1),
-            style::Print("Done")
+            cursor::MoveTo(0, self.task_list.len() as u16 + 1),
+            style::Print("Done"),
         )
         .unwrap();
-        row += 1;
         // Draw done tasks
         for (uuid, task) in self.done_list.iter() {
             queue!(
                 self.stdout,
-                cursor::MoveTo(0, row + 1),
+                cursor::MoveToNextLine(1),
                 style::Print(format!("{}: {:?}", *uuid, *task))
             )
             .unwrap();
-            row += 1;
         }
 
         // Flush last
@@ -163,12 +164,8 @@ impl Handler<WorkCompleted> for Kanban {
             if task.is_done() {
                 if let Some(task) = self.task_list.remove(&work_completed.uuid) {
                     match task.id {
-                        TaskId::CreatePR => {
-                            ctx.notify(TaskId::ReviewPR.to_task())
-                        }
-                        TaskId::MergePR => {
-                            ctx.notify(TaskId::MergePR.to_task())
-                        }
+                        TaskId::CreatePR => ctx.notify(TaskId::ReviewPR.to_task()),
+                        TaskId::MergePR => ctx.notify(TaskId::MergePR.to_task()),
                         _ => {}
                     }
                     self.done_list.push_front((work_completed.uuid, task.id));
@@ -195,17 +192,6 @@ impl Handler<AddEmployee> for Kanban {
     fn handle(&mut self, add_employee: AddEmployee, _ctx: &mut Context<Self>) -> Self::Result {
         self.employee_addresses.push(add_employee.employee_address);
     }
-}
-
-fn draw_task_title<W>(w: &mut W, title: &str, max_title_length: usize)
-where
-    W: Write,
-{
-    queue!(
-        w,
-        style::Print(format!("{:>len$}: ", title, len = max_title_length))
-    )
-    .unwrap();
 }
 
 fn draw_task_progress<W>(w: &mut W, color: Color, progress: f32, max_width: u16)
