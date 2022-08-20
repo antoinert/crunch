@@ -11,9 +11,6 @@ use crate::{
     task::Task,
 };
 
-#[allow(unused)]
-static TICK_RATE: f32 = 10.;
-
 fn main() {
     let system = actix::System::new();
 

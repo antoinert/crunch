@@ -6,19 +6,15 @@ use std::{
 };
 
 use actix::{Actor, Addr, AsyncContext, Context, Handler, Message};
-use crossterm::{
-    cursor,
-    event::{poll, read, Event},
-    execute, queue, style,
-    style::{Color, Stylize},
-    terminal, ExecutableCommand, QueueableCommand,
-};
+use crossterm::{cursor, queue, style, style::Color, terminal, ExecutableCommand};
+use rand::Rng;
 
 use crate::{
     employee::EmployeeActor,
-    task::{Task, Work, WorkCompleted},
-    TICK_RATE,
+    task::{Task, TaskId, Work, WorkCompleted},
 };
+
+static TICK_RATE: f32 = 10.;
 
 pub fn create_task_id() -> usize {
     static COUNTER: AtomicUsize = AtomicUsize::new(1);
@@ -59,11 +55,15 @@ impl Kanban {
         }
     }
 
-    pub fn tick(&mut self) {
-        for (index, employee_address) in self.employee_addresses.iter().enumerate() {
-            let mut undone_tasks = self.task_list.iter().filter(|(_, task)| !task.is_done());
+    pub fn tick(&mut self, context: &mut Context<Kanban>) {
+        let mut rng = rand::thread_rng();
 
-            if let Some((j, task)) = undone_tasks.nth(index) {
+        if rng.gen_bool(0.01) && self.task_list.len() < 10 {
+            context.notify(Task::default());
+        }
+
+        for (index, employee_address) in self.employee_addresses.iter().enumerate() {
+            if let Some((j, task)) = self.task_list.iter().nth(index) {
                 employee_address.do_send(Work {
                     task: task.id,
                     uuid: *j,
@@ -88,7 +88,6 @@ impl Kanban {
             draw_task_title(
                 &mut self.stdout,
                 &format!("{}: {:?}", *id, task.id),
-                *id,
                 title_width,
             );
             // Progress bar + percentage
@@ -107,7 +106,7 @@ impl Kanban {
 
 impl Drop for Kanban {
     fn drop(&mut self) {
-        queue!(self.stdout, terminal::LeaveAlternateScreen);
+        queue!(self.stdout, terminal::LeaveAlternateScreen).unwrap();
         self.stdout.flush().unwrap();
     }
 }
@@ -118,7 +117,10 @@ impl Actor for Kanban {
     fn started(&mut self, ctx: &mut Self::Context) {
         ctx.set_mailbox_capacity(10);
 
-        ctx.run_interval(Duration::from_secs_f32(1. / TICK_RATE), |k, _| k.tick());
+        ctx.run_interval(
+            Duration::from_secs_f32(1. / TICK_RATE),
+            |kanban, context| kanban.tick(context),
+        );
     }
 }
 
@@ -133,10 +135,19 @@ impl Handler<Task> for Kanban {
 impl Handler<WorkCompleted> for Kanban {
     type Result = ();
 
-    fn handle(&mut self, work_completed: WorkCompleted, _ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, work_completed: WorkCompleted, ctx: &mut Context<Self>) -> Self::Result {
         if let Some(task) = self.task_list.get_mut(&work_completed.uuid) {
             task.energy_taken += work_completed.energy_add;
             task.energy_taken = task.energy_taken.clamp(0.0, task.total_energy_required);
+
+            if task.is_done() {
+                if let Some(task) = self.task_list.remove(&work_completed.uuid) {
+                    match task.id {
+                        TaskId::CreatePR => ctx.notify(TaskId::ReviewPR.to_task()),
+                        _ => {}
+                    }
+                }
+            }
         }
     }
 }
@@ -157,18 +168,7 @@ impl Handler<AddEmployee> for Kanban {
     }
 }
 
-fn flush_resize_events(first_resize: (u16, u16)) -> ((u16, u16), (u16, u16)) {
-    let mut last_resize = first_resize;
-    while let Ok(true) = poll(Duration::from_millis(50)) {
-        if let Ok(Event::Resize(x, y)) = read() {
-            last_resize = (x, y);
-        }
-    }
-
-    return (first_resize, last_resize);
-}
-
-fn draw_task_title<W>(w: &mut W, title: &str, uuid: usize, max_title_length: usize)
+fn draw_task_title<W>(w: &mut W, title: &str, max_title_length: usize)
 where
     W: Write,
 {
