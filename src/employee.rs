@@ -37,6 +37,15 @@ impl EmployeeCharacteristics {
             fitness: rng.gen_range(15.0..85.0),
         }
     }
+
+    pub fn empty() -> EmployeeCharacteristics {
+        EmployeeCharacteristics {
+            company_experience: 0.,
+            rigor: 0.,
+            programming_skills: 0.,
+            fitness: 0.,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -63,8 +72,9 @@ impl EmployeeResources {
 }
 
 #[derive(Debug, Copy, Clone, Default)]
-pub struct EmployeeBuffs {
-    bonus_characteristics: EmployeeCharacteristics
+pub struct EmployeeBuff {
+    bonus_characteristics: EmployeeCharacteristics,
+    duration: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -73,7 +83,7 @@ pub struct EmployeeActor {
     pub employee_type: EmployeeType,
     pub characteristics: EmployeeCharacteristics,
     pub resources: EmployeeResources,
-    pub buffs: EmployeeBuffs,
+    pub buffs: Vec<EmployeeBuff>,
     pub kanban_address: Addr<Kanban>,
 }
 
@@ -83,7 +93,7 @@ impl EmployeeActor {
         name: &'static str,
         characteristics: EmployeeCharacteristics,
         resources: EmployeeResources,
-        buffs: EmployeeBuffs,
+        buffs: Vec<EmployeeBuff>,
         kanban_address: Addr<Kanban>,
     ) -> EmployeeActor {
         EmployeeActor {
@@ -136,7 +146,7 @@ impl Employee {
         name: &'static str,
         characteristics: EmployeeCharacteristics,
         resources: EmployeeResources,
-        buffs: EmployeeBuffs,
+        buffs: Vec<EmployeeBuff>,
         kanban_address: Addr<Kanban>,
     ) -> Employee {
         Employee {
@@ -146,7 +156,7 @@ impl Employee {
                     name,
                     characteristics,
                     resources,
-                    buffs,
+                    buffs.clone(),
                     kanban_address.clone(),
                 )
             }),
@@ -154,7 +164,29 @@ impl Employee {
     }
 }
 
-pub struct Buff;
+pub enum BuffId {
+    Caffeinated
+}
+
+impl BuffId {
+    fn to_buff(&self) -> EmployeeBuff {
+        match *self {
+            BuffId::Caffeinated => {
+                let mut bonus_characteristics = EmployeeCharacteristics::empty();
+                bonus_characteristics.rigor += 1.;
+
+                EmployeeBuff {
+                    bonus_characteristics,
+                    duration: 30,
+                }
+            }
+        }
+     }
+}
+
+pub struct Buff {
+    id: BuffId
+}
 
 impl Message for Buff {
     type Result = ();
@@ -164,6 +196,6 @@ impl Handler<Buff> for EmployeeActor {
     type Result = ();
 
     fn handle(&mut self, buff: Buff, _ctx: &mut SyncContext<Self>) -> Self::Result {
-
+        self.buffs.push(buff.id.to_buff());
     }
 }
