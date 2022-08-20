@@ -64,20 +64,12 @@ impl Employee {
 
 impl Actor for Employee {
     type Context = SyncContext<Self>;
-
-    // fn started(&mut self, ctx: &mut Self::Context) {
-    //     ctx.  notify(Task::default());
-    // }
-
-    // fn stopped(&mut self, _ctx: &mut Self::Context) {
-    //     println!("Quitting work.");
-    // }
 }
 
 impl Handler<Task> for Employee {
     type Result = ();
 
-    fn handle(&mut self, _msg: Task, ctx: &mut SyncContext<Self>) -> Self::Result {
+    fn handle(&mut self, _msg: Task, _ctx: &mut SyncContext<Self>) -> Self::Result {
         println!("Started task!");
 
         let mut tasks = vec![Task::default()];
