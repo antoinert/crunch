@@ -60,8 +60,8 @@ impl Handler<Task> for Kanban {
     fn handle(&mut self, task: Task, _ctx: &mut Context<Self>) -> Self::Result {
         self.task_list.insert(create_task_id(), task);
         println!(
-            "Added task {:?} to task list. Current tasks: {:?}",
-            task, self.task_list
+            "Added task {:?} to task list. Current amount of tasks: {:?}",
+            task.id, self.task_list.len()
         );
     }
 }
