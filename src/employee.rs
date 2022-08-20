@@ -1,3 +1,5 @@
+use std::ops::{AddAssign};
+
 use actix::{Actor, Addr, Handler, SyncArbiter, SyncContext, Message};
 use rand::Rng;
 
@@ -37,15 +39,6 @@ impl EmployeeCharacteristics {
             fitness: rng.gen_range(15.0..85.0),
         }
     }
-
-    pub fn empty() -> EmployeeCharacteristics {
-        EmployeeCharacteristics {
-            company_experience: 0.,
-            rigor: 0.,
-            programming_skills: 0.,
-            fitness: 0.,
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -69,12 +62,24 @@ impl EmployeeResources {
             stress: 0.0,
         }
     }
+
+    pub fn empty() -> EmployeeResources {
+        EmployeeResources {
+            energy: 0.0,
+            focus: 0.0,
+            stress: 0.0,
+        }
+    }
 }
 
-#[derive(Debug, Copy, Clone, Default)]
-pub struct EmployeeBuff {
-    bonus_characteristics: EmployeeCharacteristics,
-    duration: usize,
+impl AddAssign for EmployeeResources {
+    fn add_assign(&mut self, other: Self) {
+        *self = Self {
+            energy: self.energy + other.energy,
+            focus: self.focus + other.focus,
+            stress: self.stress + other.stress,
+        };
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -83,7 +88,6 @@ pub struct EmployeeActor {
     pub employee_type: EmployeeType,
     pub characteristics: EmployeeCharacteristics,
     pub resources: EmployeeResources,
-    pub buffs: Vec<EmployeeBuff>,
     pub kanban_address: Addr<Kanban>,
 }
 
@@ -93,7 +97,6 @@ impl EmployeeActor {
         name: &'static str,
         characteristics: EmployeeCharacteristics,
         resources: EmployeeResources,
-        buffs: Vec<EmployeeBuff>,
         kanban_address: Addr<Kanban>,
     ) -> EmployeeActor {
         EmployeeActor {
@@ -101,7 +104,6 @@ impl EmployeeActor {
             employee_type,
             characteristics,
             resources,
-            buffs,
             kanban_address,
         }
     }
@@ -122,13 +124,14 @@ impl Actor for EmployeeActor {
 impl Handler<Work> for EmployeeActor {
     type Result = ();
 
-    fn handle(&mut self, work: Work, _ctx: &mut SyncContext<Self>) -> Self::Result {
+    fn handle(&mut self, work: Work, ctx: &mut SyncContext<Self>) -> Self::Result {
         self.spawn_tasks();
 
         let task_data = work.task.to_task();
         let multiplier = task_data.energy_multipliers.get_energy_cost(&self);
         let energy_add = task_data.energy_taken_per_tick * multiplier;
         self.kanban_address.do_send(WorkCompleted {
+            employee_address: ctx.address(),
             employee_name: self.employee_name,
             uuid: work.uuid,
             energy_add,
@@ -146,7 +149,6 @@ impl Employee {
         name: &'static str,
         characteristics: EmployeeCharacteristics,
         resources: EmployeeResources,
-        buffs: Vec<EmployeeBuff>,
         kanban_address: Addr<Kanban>,
     ) -> Employee {
         Employee {
@@ -156,7 +158,6 @@ impl Employee {
                     name,
                     characteristics,
                     resources,
-                    buffs.clone(),
                     kanban_address.clone(),
                 )
             }),
@@ -169,23 +170,21 @@ pub enum BuffId {
 }
 
 impl BuffId {
-    fn to_buff(&self) -> EmployeeBuff {
+    fn translate_to_resources(&self) -> EmployeeResources {
         match *self {
             BuffId::Caffeinated => {
-                let mut bonus_characteristics = EmployeeCharacteristics::empty();
-                bonus_characteristics.rigor += 1.;
+                let mut bonus_resources = EmployeeResources::empty();
+                bonus_resources.focus += 30.0;
+                bonus_resources.energy += 10.0;
 
-                EmployeeBuff {
-                    bonus_characteristics,
-                    duration: 30,
-                }
+                bonus_resources
             }
         }
      }
 }
 
 pub struct Buff {
-    id: BuffId
+    pub id: BuffId
 }
 
 impl Message for Buff {
@@ -196,6 +195,6 @@ impl Handler<Buff> for EmployeeActor {
     type Result = ();
 
     fn handle(&mut self, buff: Buff, _ctx: &mut SyncContext<Self>) -> Self::Result {
-        self.buffs.push(buff.id.to_buff());
+        self.resources += buff.id.translate_to_resources();
     }
 }

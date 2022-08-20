@@ -22,7 +22,6 @@ fn main() {
             "John",
             Default::default(),
             Default::default(),
-            vec![],
             kanban_address.clone(),
         );
         let employee2 = Employee::new(
@@ -34,7 +33,6 @@ fn main() {
                 focus: 80.0,
                 stress: 10.0,
             },
-            vec![],
             kanban_address.clone(),
         );
 
