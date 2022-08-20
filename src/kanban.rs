@@ -1,12 +1,21 @@
 use std::{
-    collections::{BTreeSet, HashMap, HashSet, VecDeque},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
     io::{stdout, Stdout, Write},
+    process::exit,
     sync::atomic::{AtomicUsize, Ordering},
     time::Duration,
 };
 
-use actix::{Actor, Addr, AsyncContext, Context, Handler, Message};
-use crossterm::{cursor, queue, style, style::Color, terminal, ExecutableCommand};
+use actix::{Actor, Addr, AsyncContext, Context, Handler, Message, System};
+use crossterm::{
+    cursor, event,
+    event::{poll, Event, KeyCode, KeyEvent},
+    queue, style,
+    style::{Color, Stylize},
+    terminal,
+    terminal::enable_raw_mode,
+    ExecutableCommand,
+};
 use rand::Rng;
 
 use crate::{
@@ -26,10 +35,14 @@ pub struct Kanban {
     task_list: HashMap<usize, (Task, BTreeSet<String>)>,
     done_list: VecDeque<(usize, TaskId, BTreeSet<String>)>,
     pub employee_addresses: Vec<Addr<EmployeeActor>>,
+    employee_data: BTreeMap<String, EmployeeActor>,
+    curr_employee: usize,
 }
 
 impl Kanban {
     pub fn new() -> Self {
+        enable_raw_mode().unwrap();
+
         let mut stdout = stdout();
         stdout
             .execute(terminal::Clear(terminal::ClearType::All))
@@ -54,10 +67,14 @@ impl Kanban {
             task_list: HashMap::new(),
             done_list: VecDeque::new(),
             employee_addresses: vec![],
+            employee_data: BTreeMap::new(),
+            curr_employee: 0,
         }
     }
 
     pub fn tick(&mut self, context: &mut Context<Kanban>) {
+        self.handle_keys();
+
         let mut rng = rand::thread_rng();
 
         if rng.gen_bool(0.01) && self.task_list.len() < 10 {
@@ -75,17 +92,60 @@ impl Kanban {
         self.draw()
     }
 
+    fn handle_keys(&mut self) {
+        if poll(Duration::from_millis(20)).unwrap() {
+            let event = event::read();
+            if let Ok(Event::Key(KeyEvent {
+                code: KeyCode::Left,
+                ..
+            })) = event
+            {
+                if self.curr_employee == 0 {
+                    self.curr_employee = self.employee_addresses.len() - 1;
+                } else {
+                    self.curr_employee -= 1;
+                }
+            }
+            if let Ok(Event::Key(KeyEvent {
+                code: KeyCode::Right,
+                ..
+            })) = event
+            {
+                self.curr_employee = (self.curr_employee + 1) % self.employee_addresses.len();
+            }
+            if let Ok(Event::Key(KeyEvent {
+                code: KeyCode::Esc,
+                ..
+            })) = event
+            {
+                System::current().stop();
+            }
+        }
+    }
+
     fn draw(&mut self) {
         let max_bar_width = 15;
         let progress_color = Color::Green;
-        // Title row
         queue!(
             self.stdout,
             terminal::Clear(terminal::ClearType::All),
             cursor::MoveTo(0, 0),
-            style::Print("Tasks")
         )
         .unwrap();
+        let employees = self.employee_data.keys().cloned().collect::<Vec<String>>();
+        if let Some(employee_name) = employees.get(self.curr_employee) {
+            let curr_employee = self.employee_data.get(employee_name).unwrap();
+            let mut employee_tasks = vec![];
+            for (_id, (task, contributors)) in self.task_list.iter() {
+                if contributors.contains(curr_employee.employee_name) {
+                    employee_tasks.push(task.clone());
+                }
+            }
+            draw_employee_card(&mut self.stdout, curr_employee, &employee_tasks);
+        }
+
+        // Title row
+        queue!(self.stdout, style::Print("Tasks")).unwrap();
 
         for (id, (task, contributors)) in self.task_list.iter() {
             // Start row
@@ -106,12 +166,7 @@ impl Kanban {
 
             draw_contributors(&mut self.stdout, contributors);
         }
-        queue!(
-            self.stdout,
-            cursor::MoveTo(0, self.task_list.len() as u16 + 1),
-            style::Print("Done"),
-        )
-        .unwrap();
+        queue!(self.stdout, cursor::MoveToNextLine(1), style::Print("Done"),).unwrap();
         // Draw done tasks
         for (uuid, task, contributors) in self.done_list.iter() {
             queue!(
@@ -201,6 +256,15 @@ impl Handler<AddEmployee> for Kanban {
     }
 }
 
+impl Handler<EmployeeActor> for Kanban {
+    type Result = ();
+
+    fn handle(&mut self, employee_data: EmployeeActor, _ctx: &mut Context<Self>) -> Self::Result {
+        self.employee_data
+            .insert(employee_data.employee_name.to_string(), employee_data);
+    }
+}
+
 fn draw_task_progress<W>(w: &mut W, color: Color, progress: f32, max_width: u16)
 where
     W: Write,
@@ -238,4 +302,31 @@ where
             queue!(w, style::Print(", ")).unwrap();
         }
     }
+}
+
+fn draw_employee_card<W>(w: &mut W, employee: &EmployeeActor, employee_tasks: &Vec<Task>)
+where
+    W: Write,
+{
+    let card_height = 20;
+    let card_width = 40;
+    for y in 0..card_height {
+        for x in 0..card_width {
+            if (y == 0 || y == card_height - 1) || (x == 0 || x == card_width - 1) {
+                queue!(
+                    w,
+                    cursor::MoveTo(x, y),
+                    style::PrintStyledContent("█".underlined().green())
+                )
+                .unwrap();
+            }
+        }
+    }
+    queue!(
+        w,
+        cursor::MoveTo(1, 1),
+        style::Print(format!("{}", employee.employee_name))
+    )
+    .unwrap();
+    queue!(w, cursor::MoveTo(0, card_height + 1),).unwrap();
 }

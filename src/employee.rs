@@ -1,8 +1,8 @@
-use actix::{Actor, Addr, Handler, SyncArbiter, SyncContext, Message};
+use actix::{Actor, Addr, Handler, Message, SyncArbiter, SyncContext};
 use rand::Rng;
 
 use crate::{
-    task::{Work, WorkCompleted, TaskId},
+    task::{TaskId, Work, WorkCompleted},
     Kanban,
 };
 
@@ -133,6 +133,8 @@ impl Handler<Work> for EmployeeActor {
             uuid: work.uuid,
             energy_add,
         });
+        // Send updated employee data
+        self.kanban_address.do_send(self.clone());
     }
 }
 
@@ -165,7 +167,7 @@ impl Employee {
 }
 
 pub enum BuffId {
-    Caffeinated
+    Caffeinated,
 }
 
 impl BuffId {
@@ -181,11 +183,11 @@ impl BuffId {
                 }
             }
         }
-     }
+    }
 }
 
 pub struct Buff {
-    id: BuffId
+    id: BuffId,
 }
 
 impl Message for Buff {
@@ -198,4 +200,8 @@ impl Handler<Buff> for EmployeeActor {
     fn handle(&mut self, buff: Buff, _ctx: &mut SyncContext<Self>) -> Self::Result {
         self.buffs.push(buff.id.to_buff());
     }
+}
+
+impl Message for EmployeeActor {
+    type Result = ();
 }
