@@ -3,7 +3,7 @@ use std::{
     fs,
     io::{stdout, Stdout, Write},
     sync::atomic::{AtomicUsize, Ordering},
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use actix::{Actor, Addr, AsyncContext, Context, Handler, Message, System};
@@ -11,8 +11,8 @@ use chrono::{DateTime, Utc};
 use crossterm::{
     cursor, event,
     event::{poll, Event, KeyCode, KeyEvent},
-    execute, queue, style,
-    style::{Color, Colors, SetBackgroundColor, SetColors, Stylize},
+    queue, style,
+    style::{Color, Stylize},
     terminal,
     terminal::enable_raw_mode,
     ExecutableCommand,
