@@ -202,13 +202,23 @@ impl Kanban {
         for (_id, (task, contributors)) in capped_list.iter() {
             // Start row
             queue!(self.stdout, cursor::MoveToNextLine(1)).unwrap();
-            // Title
-            queue!(
-                self.stdout,
-                style::Print(&format!(
+
+            let print = if task.id == TaskId::CoffeeBreak {
+                style::Print(format!(
+                    "{0: <20}",
+                    format!("䷢ [{:?}]", task.id)
+                ))
+            } else {
+                style::Print(format!(
                     "{0: <20}",
                     format!("䷢ [{:?}] {} ", task.id, task.name)
                 ))
+            };
+
+            // Title
+            queue!(
+                self.stdout,
+                print
             )
             .unwrap();
 
@@ -235,13 +245,22 @@ impl Kanban {
 
         // Draw done tasks
         for (_uuid, task, contributors) in self.done_list.iter() {
-            queue!(
-                self.stdout,
-                cursor::MoveToNextLine(1),
-                style::Print(&format!(
+            let print = if task.id == TaskId::CoffeeBreak {
+                style::Print(format!(
+                    "{0: <20}",
+                    format!("✓ [{:?}]", task.id)
+                ))
+            } else {
+                style::Print(format!(
                     "{0: <20}",
                     format!("✓ [{:?}] {} ", task.id, task.name)
                 ))
+            };
+
+            queue!(
+                self.stdout,
+                cursor::MoveToNextLine(1),
+                print
             )
             .unwrap();
             draw_task_progress(&mut self.stdout, done_color, 1.0, max_bar_width);
