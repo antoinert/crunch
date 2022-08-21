@@ -1,6 +1,5 @@
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
-    fs,
     io::{stdout, Stdout, Write},
     sync::atomic::AtomicUsize,
     time::Duration,
@@ -39,6 +38,8 @@ pub struct Kanban {
     employee_data: BTreeMap<String, EmployeeActor>,
     curr_employee: usize,
     start_time: DateTime<Utc>,
+    okko: &'static str,
+    anton: &'static str
 }
 
 impl Kanban {
@@ -72,6 +73,8 @@ impl Kanban {
             employee_data: BTreeMap::new(),
             curr_employee: 0,
             start_time: time,
+            okko: include_str!("../okko.txt"),
+            anton: include_str!("../anton.txt")
         }
     }
 
@@ -179,7 +182,7 @@ impl Kanban {
                     employee_tasks.push(task.clone());
                 }
             }
-            draw_employee_card(&mut self.stdout, curr_employee, &employee_tasks);
+            draw_employee_card(&mut self.stdout, curr_employee, &employee_tasks, &self.okko, &self.anton);
         }
 
         // List all employees
@@ -405,7 +408,7 @@ where
     }
 }
 
-fn draw_employee_card<W>(w: &mut W, employee: &EmployeeActor, employee_tasks: &Vec<Task>)
+fn draw_employee_card<W>(w: &mut W, employee: &EmployeeActor, employee_tasks: &Vec<Task>, okko: &str, anton: &str)
 where
     W: Write,
 {
@@ -433,7 +436,7 @@ where
 
     queue!(w, cursor::MoveTo(1, 1),).unwrap();
 
-    draw_file_name(w, name_file);
+    draw_file_name(w, name_file, okko, anton);
 
     draw_current_tasks(w, employee_tasks);
 
@@ -536,11 +539,11 @@ where
     }
 }
 
-fn draw_file_name<W>(w: &mut W, file_name: String)
+fn draw_file_name<W>(w: &mut W, file_name: String, okko: &str, anton: &str)
 where
     W: Write,
 {
-    let data_name = fs::read_to_string(format!("./{}", file_name)).expect("Unable to read file");
+    let data_name = if file_name == "okko.txt" { okko } else { anton };
 
     let data = data_name.split("\n");
 
