@@ -4,6 +4,7 @@ mod task;
 
 use actix::Actor;
 use kanban::AddEmployee;
+use task::TaskId;
 
 use crate::{
     employee::{Employee, EmployeeCharacteristics, EmployeeResources, EmployeeType},
@@ -43,9 +44,10 @@ fn main() {
             employee_address: employee2.addr,
         });
 
-        kanban_address.do_send(Task::default());
-        kanban_address.do_send(Task::default());
-        kanban_address.do_send(Task::default());
+        let feature_task = TaskId::CreatePR.to_task().as_feature();
+
+        kanban_address.do_send(feature_task);
+        kanban_address.do_send(feature_task);
     });
 
     system.run().expect("Something went wrong starting system.");

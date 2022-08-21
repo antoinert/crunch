@@ -34,7 +34,7 @@ pub fn create_task_id() -> usize {
 pub struct Kanban {
     stdout: Stdout,
     task_list: HashMap<usize, (Task, BTreeSet<String>)>,
-    done_list: VecDeque<(usize, TaskId, BTreeSet<String>)>,
+    done_list: VecDeque<(usize, Task, BTreeSet<String>)>,
     pub employee_addresses: Vec<Addr<EmployeeActor>>,
     employee_data: BTreeMap<String, EmployeeActor>,
     curr_employee: usize,
@@ -81,7 +81,13 @@ impl Kanban {
         let mut rng = rand::thread_rng();
 
         if rng.gen_bool(0.01) && self.task_list.len() < 10 {
-            context.notify(Task::default());
+            let task = if rng.gen_bool(0.1) {
+                TaskId::CreatePR.to_task().as_bug_fix()
+            } else {
+                TaskId::CreatePR.to_task().as_feature()
+            };
+
+            context.notify(task);
         }
 
         let mut task_list = self
@@ -199,7 +205,10 @@ impl Kanban {
             // Title
             queue!(
                 self.stdout,
-                style::Print(&format!("{0: <20}", format!("{}: {:?}: ", *id, task.id)))
+                style::Print(&format!(
+                    "{0: <20}",
+                    format!("䷢ [{:?}] {} ", task.id, task.name)
+                ))
             )
             .unwrap();
 
@@ -229,7 +238,10 @@ impl Kanban {
             queue!(
                 self.stdout,
                 cursor::MoveToNextLine(1),
-                style::Print(&format!("{0: <20}", format!("{}: {:?}: ", *uuid, *task)))
+                style::Print(&format!(
+                    "{0: <20}",
+                    format!("✓ [{:?}] {} ", task.id, task.name)
+                ))
             )
             .unwrap();
             draw_task_progress(&mut self.stdout, done_color, 1.0, max_bar_width);
@@ -301,7 +313,7 @@ impl Handler<WorkCompleted> for Kanban {
                         _ => {}
                     }
                     self.done_list
-                        .push_front((work_completed.uuid, task.id, contributors));
+                        .push_front((work_completed.uuid, task, contributors));
                     if self.done_list.len() > 5 {
                         self.done_list.pop_back();
                     }
@@ -498,7 +510,8 @@ where
         queue!(
             w,
             cursor::MoveTo(section_start.0, section_start.1 + 2 + i as u16),
-            style::Print(&format!("{0: <20}", format!("{:?}: ", task.id)))
+            style::PrintStyledContent(format!("[{:?}] ", task.id).green()),
+            style::PrintStyledContent(format!("{0: <20}", task.name).white())
         )
         .unwrap();
         draw_task_progress(w, Color::Green, task.progress(), 10);

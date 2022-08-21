@@ -1,3 +1,8 @@
+use std::{
+    collections::HashMap,
+    fmt::{self, Display},
+};
+
 use actix::{Addr, Message};
 
 use crate::employee::EmployeeActor;
@@ -86,6 +91,19 @@ impl TaskId {
     }
 }
 
+impl Display for Task {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let task_prefix = match self.id {
+            TaskId::CreatePR => "[create] ",
+            TaskId::MergePR => "[merge] ",
+            TaskId::ReviewPR => "[review] ",
+            TaskId::CoffeeBreak => "",
+        };
+
+        write!(f, "{}{}", task_prefix, self.name)
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct TaskEnergyMultipliers {
     // Characteristics
@@ -129,6 +147,7 @@ impl Default for TaskEnergyMultipliers {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Task {
+    pub name: &'static str,
     pub id: TaskId,
     /// How much energy is needed in total
     pub total_energy_required: f32,
@@ -148,11 +167,24 @@ impl Task {
     pub fn progress(&self) -> f32 {
         self.energy_taken / self.total_energy_required
     }
+
+    pub fn as_feature(&mut self) -> Self {
+        self.name = "Feature";
+
+        *self
+    }
+
+    pub fn as_bug_fix(&mut self) -> Self {
+        self.name = "Bug fix";
+
+        *self
+    }
 }
 
 impl Default for Task {
     fn default() -> Self {
         Task {
+            name: "Feature",
             id: TaskId::CreatePR,
             total_energy_required: 5.0,
             energy_taken: 0.0,
