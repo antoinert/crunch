@@ -9,7 +9,6 @@ use task::TaskId;
 use crate::{
     employee::{Employee, EmployeeCharacteristics, EmployeeResources, EmployeeType},
     kanban::Kanban,
-    task::Task,
 };
 
 fn main() {

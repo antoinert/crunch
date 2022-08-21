@@ -199,7 +199,7 @@ impl Kanban {
         .unwrap();
 
         let capped_list = &sorted_task_list[0..6.min(sorted_task_list.len())];
-        for (id, (task, contributors)) in capped_list.iter() {
+        for (_id, (task, contributors)) in capped_list.iter() {
             // Start row
             queue!(self.stdout, cursor::MoveToNextLine(1)).unwrap();
             // Title
@@ -234,7 +234,7 @@ impl Kanban {
         }
 
         // Draw done tasks
-        for (uuid, task, contributors) in self.done_list.iter() {
+        for (_uuid, task, contributors) in self.done_list.iter() {
             queue!(
                 self.stdout,
                 cursor::MoveToNextLine(1),
