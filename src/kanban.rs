@@ -81,7 +81,7 @@ impl Kanban {
         let mut rng = rand::thread_rng();
 
         if rng.gen_bool(0.01) && self.task_list.len() < 10 {
-            let task = if rng.gen_bool(0.1) {
+            let task = if rng.gen_bool(0.2) {
                 TaskId::CreatePR.to_task().as_bug_fix()
             } else {
                 TaskId::CreatePR.to_task().as_feature()
@@ -202,16 +202,15 @@ impl Kanban {
         for (_id, (task, contributors)) in capped_list.iter() {
             // Start row
             queue!(self.stdout, cursor::MoveToNextLine(1)).unwrap();
-
             let print = if task.id == TaskId::CoffeeBreak {
                 style::Print(format!(
-                    "{0: <20}",
-                    format!("䷢ [{:?}]", task.id)
+                    "{0: <23}",
+                    format!("䷢ [{:<11}]         ", format!("{:?}", task.id))
                 ))
             } else {
                 style::Print(format!(
-                    "{0: <20}",
-                    format!("䷢ [{:?}] {} ", task.id, task.name)
+                    "{0: <23}",
+                    format!("䷢ [{:<11}] {} ", format!("{:?}", task.id), task.name)
                 ))
             };
 
@@ -247,13 +246,13 @@ impl Kanban {
         for (_uuid, task, contributors) in self.done_list.iter() {
             let print = if task.id == TaskId::CoffeeBreak {
                 style::Print(format!(
-                    "{0: <20}",
-                    format!("✓ [{:?}]", task.id)
+                    "{0: <23}",
+                    format!("✓ [{:<11}]         ", format!("{:?}", task.id))
                 ))
             } else {
                 style::Print(format!(
-                    "{0: <20}",
-                    format!("✓ [{:?}] {} ", task.id, task.name)
+                    "{0: <23}",
+                    format!("✓ [{:<11}] {} ", format!("{:?}", task.id), task.name)
                 ))
             };
 
@@ -530,7 +529,7 @@ where
             w,
             cursor::MoveTo(section_start.0, section_start.1 + 2 + i as u16),
             style::PrintStyledContent(format!("[{:?}] ", task.id).green()),
-            style::PrintStyledContent(format!("{0: <20}", task.name).white())
+            style::PrintStyledContent(format!("{0: <10}", task.name).white()),
         )
         .unwrap();
         draw_task_progress(w, Color::Green, task.progress(), 10);
